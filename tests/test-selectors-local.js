@@ -87,7 +87,7 @@ async function runTests() {
 		console.log('');
 
 		// Create tab with local test file
-		const testFilePath = join(dirname(__dirname), 'test-selector-page.html');
+		const testFilePath = join(dirname(__dirname), 'test/test-selector-page.html');
 		const testFileUrl = `file://${testFilePath}`;
 
 		console.log('📋 Creating test tab with local HTML file...');

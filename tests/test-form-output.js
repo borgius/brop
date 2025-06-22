@@ -87,7 +87,7 @@ async function runTest() {
 		console.log('');
 
 		// Use our local test file that has various form elements
-		const testFilePath = join(dirname(__dirname), 'test-selector-page.html');
+		const testFilePath = join(dirname(__dirname), 'test/test-selector-page.html');
 		const testFileUrl = `file://${testFilePath}`;
 
 		console.log('📋 Creating test tab with form elements...');

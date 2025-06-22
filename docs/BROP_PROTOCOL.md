@@ -259,6 +259,99 @@ Extracts simplified content using Readability or converts to Markdown with Turnd
 }
 ```
 
+#### `get_element`
+
+Finds and retrieves detailed information about DOM elements using CSS selectors.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab to search in
+- `selector` (string, required): CSS selector to find elements
+- `multiple` (boolean, optional): Return all matching elements (default: false)
+
+**Response (single element):**
+
+```json
+{
+  "success": true,
+  "selector": "#submit-button",
+  "tabId": 123,
+  "found": 1,
+  "element": {
+    "tagName": "button",
+    "id": "submit-button",
+    "className": "btn btn-primary",
+    "classList": ["btn", "btn-primary"],
+    "textContent": "Submit",
+    "innerHTML": "Submit",
+    "isVisible": true,
+    "isClickable": true,
+    "boundingBox": {
+      "x": 100,
+      "y": 200,
+      "width": 80,
+      "height": 40,
+      "top": 200,
+      "right": 180,
+      "bottom": 240,
+      "left": 100
+    },
+    "computedStyle": {
+      "display": "block",
+      "visibility": "visible",
+      "opacity": "1",
+      "color": "rgb(255, 255, 255)",
+      "backgroundColor": "rgb(0, 123, 255)",
+      "fontSize": "16px",
+      "cursor": "pointer"
+    },
+    "attributes": {
+      "id": "submit-button",
+      "class": "btn btn-primary",
+      "type": "submit"
+    },
+    "parentTagName": "form",
+    "childrenCount": 0,
+    "role": "button",
+    "ariaLabel": "Submit form"
+  }
+}
+```
+
+**Response (multiple elements):**
+
+```json
+{
+  "success": true,
+  "selector": ".menu-item",
+  "tabId": 123,
+  "found": 3,
+  "elements": [
+    {
+      "tagName": "li",
+      "className": "menu-item",
+      // ... element details
+    },
+    // ... more elements
+  ]
+}
+```
+
+**Element Details Include:**
+
+- Basic properties: tagName, id, className, classList
+- Content: textContent, innerHTML, value (for inputs)
+- Attributes: all HTML attributes
+- State: disabled, checked, selected, readOnly
+- Position: boundingBox with coordinates and dimensions
+- Visibility: isVisible, isClickable
+- Computed styles: display, visibility, color, background, etc.
+- Parent/child info: parentTagName, childrenCount
+- Form properties: type, name, placeholder, required, pattern, min/max
+- ARIA properties: role, ariaLabel, ariaDescribedBy, ariaLabelledBy
+- Data attributes: all data-* attributes
+- Select options: for select elements, includes all options
+
 ### Screenshot Capture
 
 #### `get_screenshot`

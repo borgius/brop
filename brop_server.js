@@ -35,35 +35,24 @@ class BROPServer {
 			"get_server_status",
 			this.handleGetServerStatus.bind(this),
 		);
-		this.messageHandlers.set(
-			"get_console_logs",
-			this.handleGetConsoleLogs.bind(this),
-		);
-		this.messageHandlers.set(
-			"execute_console",
-			this.handleExecuteConsole.bind(this),
-		);
-		this.messageHandlers.set(
-			"get_screenshot",
-			this.handleGetScreenshot.bind(this),
-		);
-		this.messageHandlers.set(
-			"get_page_content",
-			this.handleGetPageContent.bind(this),
-		);
+
+		// Page console access
+		this.messageHandlers.set("get_console_logs", this.handleGetConsoleLogs.bind(this));
+		this.messageHandlers.set("execute_console", this.handleExecuteConsole.bind(this));
+
+		// extract page information
+		this.messageHandlers.set("get_simplified_dom", this.handleGetSimplifiedDOM.bind(this));
+		this.messageHandlers.set("get_element", this.handleGetElement.bind(this));
+		this.messageHandlers.set("get_screenshot", this.handleGetScreenshot.bind(this));
+		this.messageHandlers.set("get_page_content", this.handleGetPageContent.bind(this));
+
+		// page interaction
 		this.messageHandlers.set("navigate", this.handleNavigate.bind(this));
 		this.messageHandlers.set("click", this.handleClick.bind(this));
 		this.messageHandlers.set("type", this.handleType.bind(this));
-		this.messageHandlers.set(
-			"wait_for_element",
-			this.handleWaitForElement.bind(this),
-		);
+		this.messageHandlers.set("wait_for_element", this.handleWaitForElement.bind(this));
 		this.messageHandlers.set("evaluate_js", this.handleEvaluateJS.bind(this));
-		this.messageHandlers.set("get_element", this.handleGetElement.bind(this));
-		this.messageHandlers.set(
-			"get_simplified_dom",
-			this.handleGetSimplifiedDOM.bind(this),
-		);
+		// this.messageHandlers.set("fill_form", this.handleFillForm.bind(this));
 
 		// Chrome Extension  management
 		this.messageHandlers.set(
@@ -684,7 +673,231 @@ class BROPServer {
 	}
 
 	async handleGetElement(params) {
-		throw new Error("GetElement method not yet implemented");
+		const { selector, tabId, multiple = false } = params;
+
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		if (!selector) {
+			throw new Error("selector is required. Provide a CSS selector to find elements.");
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			throw new Error(`Tab ${tabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		console.log(
+			`🔧 DEBUG handleGetElement: Finding elements with selector "${selector}" in tab ${tabId}`,
+		);
+
+		try {
+			const results = await chrome.scripting.executeScript({
+				target: { tabId: tabId },
+				func: (selectorStr, findMultiple) => {
+					try {
+						// Helper function to get element details
+						const getElementDetails = (element) => {
+							if (!element) return null;
+
+							// Get bounding box
+							const rect = element.getBoundingClientRect();
+
+							// Get computed styles
+							const computedStyle = window.getComputedStyle(element);
+
+							// Check visibility
+							const isVisible = !!(
+								element.offsetWidth ||
+								element.offsetHeight ||
+								element.getClientRects().length
+							) && computedStyle.display !== 'none' &&
+								computedStyle.visibility !== 'hidden' &&
+								computedStyle.opacity !== '0';
+
+							// Get attributes
+							const attributes = {};
+							for (const attr of element.attributes) {
+								attributes[attr.name] = attr.value;
+							}
+
+							// Build element details
+							const details = {
+								// Basic properties
+								tagName: element.tagName.toLowerCase(),
+								id: element.id || null,
+								className: element.className || null,
+								classList: element.classList ? Array.from(element.classList) : [],
+
+								// Content
+								textContent: element.textContent?.trim() || null,
+								innerHTML: element.innerHTML,
+								value: element.value || null, // For form elements
+
+								// Attributes
+								attributes: attributes,
+								href: element.href || null,
+								src: element.src || null,
+								alt: element.alt || null,
+
+								// State
+								disabled: element.disabled || false,
+								checked: element.checked || false,
+								selected: element.selected || false,
+								readOnly: element.readOnly || false,
+
+								// Position and dimensions
+								boundingBox: {
+									x: rect.x,
+									y: rect.y,
+									width: rect.width,
+									height: rect.height,
+									top: rect.top,
+									right: rect.right,
+									bottom: rect.bottom,
+									left: rect.left
+								},
+
+								// Visibility and interaction
+								isVisible: isVisible,
+								isClickable: isVisible && (
+									element.tagName === 'BUTTON' ||
+									element.tagName === 'A' ||
+									element.tagName === 'INPUT' ||
+									element.tagName === 'SELECT' ||
+									element.tagName === 'TEXTAREA' ||
+									element.onclick !== null ||
+									element.hasAttribute('role') ||
+									computedStyle.cursor === 'pointer'
+								),
+
+								// Styles
+								computedStyle: {
+									display: computedStyle.display,
+									visibility: computedStyle.visibility,
+									opacity: computedStyle.opacity,
+									color: computedStyle.color,
+									backgroundColor: computedStyle.backgroundColor,
+									fontSize: computedStyle.fontSize,
+									fontWeight: computedStyle.fontWeight,
+									cursor: computedStyle.cursor,
+									position: computedStyle.position,
+									zIndex: computedStyle.zIndex
+								},
+
+								// Parent/child info
+								parentTagName: element.parentElement?.tagName.toLowerCase() || null,
+								childrenCount: element.children.length,
+
+								// Form-specific properties
+								type: element.type || null,
+								name: element.name || null,
+								placeholder: element.placeholder || null,
+								required: element.required || false,
+								pattern: element.pattern || null,
+								min: element.min || null,
+								max: element.max || null,
+								step: element.step || null,
+
+								// ARIA properties
+								role: element.getAttribute('role'),
+								ariaLabel: element.getAttribute('aria-label'),
+								ariaDescribedBy: element.getAttribute('aria-describedby'),
+								ariaLabelledBy: element.getAttribute('aria-labelledby'),
+
+								// Data attributes
+								dataAttributes: Object.fromEntries(
+									Array.from(element.attributes)
+										.filter(attr => attr.name.startsWith('data-'))
+										.map(attr => [attr.name.substring(5), attr.value])
+								)
+							};
+
+							// For select elements, get options
+							if (element.tagName === 'SELECT') {
+								details.options = Array.from(element.options).map(opt => ({
+									value: opt.value,
+									text: opt.text,
+									selected: opt.selected
+								}));
+							}
+
+							return details;
+						};
+
+						// Find element(s)
+						if (findMultiple) {
+							const elements = document.querySelectorAll(selectorStr);
+							return {
+								success: true,
+								found: elements.length,
+								elements: Array.from(elements).map(getElementDetails)
+							};
+						} else {
+							const element = document.querySelector(selectorStr);
+							if (!element) {
+								return {
+									success: false,
+									error: `No element found with selector: ${selectorStr}`
+								};
+							}
+							return {
+								success: true,
+								found: 1,
+								element: getElementDetails(element)
+							};
+						}
+					} catch (error) {
+						return {
+							success: false,
+							error: `Failed to find element: ${error.message}`
+						};
+					}
+				},
+				args: [selector, multiple],
+			});
+
+			const result = results[0]?.result;
+
+			if (!result) {
+				throw new Error("No result from element search");
+			}
+
+			if (!result.success) {
+				throw new Error(result.error);
+			}
+
+			console.log(
+				`✅ Found ${result.found} element(s) with selector "${selector}"`,
+			);
+
+			return {
+				success: true,
+				selector: selector,
+				tabId: tabId,
+				found: result.found,
+				...(multiple ? { elements: result.elements } : { element: result.element })
+			};
+		} catch (error) {
+			console.error("Element search failed:", error);
+			throw new Error(`Element search error: ${error.message}`);
+		}
 	}
 
 	async handleGetSimplifiedDOM(params) {
