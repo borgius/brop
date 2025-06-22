@@ -52,7 +52,7 @@ class BROPServer {
 		this.messageHandlers.set("type", this.handleType.bind(this));
 		this.messageHandlers.set("wait_for_element", this.handleWaitForElement.bind(this));
 		this.messageHandlers.set("evaluate_js", this.handleEvaluateJS.bind(this));
-		// this.messageHandlers.set("fill_form", this.handleFillForm.bind(this));
+		this.messageHandlers.set("fill_form", this.handleFillForm.bind(this));
 
 		// Chrome Extension  management
 		this.messageHandlers.set(
@@ -672,6 +672,240 @@ class BROPServer {
 		throw new Error("EvaluateJS method not yet implemented");
 	}
 
+	async handleFillForm(params) {
+		const { tabId, formData, submit = false, formSelector = null } = params;
+
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		if (!formData || typeof formData !== 'object') {
+			throw new Error("formData is required and must be an object with field names/values");
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			throw new Error(`Tab ${tabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		console.log(
+			`🔧 DEBUG handleFillForm: Filling form in tab ${tabId} with ${Object.keys(formData).length} fields`,
+		);
+
+		try {
+			const results = await chrome.scripting.executeScript({
+				target: { tabId: tabId },
+				func: (data, shouldSubmit, formSelectorStr) => {
+					try {
+						let filledFields = 0;
+						let form = null;
+						const errors = [];
+						const filled = [];
+
+						// Helper function to set field value
+						const setFieldValue = (field, value) => {
+							const tagName = field.tagName.toLowerCase();
+							const type = field.type?.toLowerCase();
+
+							// Handle different input types
+							if (tagName === 'input') {
+								if (type === 'checkbox' || type === 'radio') {
+									// For checkboxes and radios, interpret value as boolean
+									field.checked = value === true || value === 'true' || value === '1' || value === 'on';
+								} else if (type === 'file') {
+									// File inputs cannot be set programmatically for security reasons
+									errors.push(`Cannot set file input: ${field.name || field.id}`);
+									return false;
+								} else {
+									// Text, email, password, number, etc.
+									field.value = String(value);
+								}
+							} else if (tagName === 'textarea') {
+								field.value = String(value);
+							} else if (tagName === 'select') {
+								// For select elements, try to match by value or text
+								const options = Array.from(field.options);
+								const matchByValue = options.find(opt => opt.value === String(value));
+								const matchByText = options.find(opt => opt.text === String(value));
+
+								if (matchByValue) {
+									field.value = matchByValue.value;
+								} else if (matchByText) {
+									field.value = matchByText.value;
+								} else {
+									errors.push(`No matching option for select field: ${field.name || field.id} (value: ${value})`);
+									return false;
+								}
+							} else {
+								errors.push(`Unsupported field type: ${tagName}`);
+								return false;
+							}
+
+							// Trigger events to ensure any JavaScript handlers are fired
+							field.dispatchEvent(new Event('input', { bubbles: true }));
+							field.dispatchEvent(new Event('change', { bubbles: true }));
+
+							return true;
+						};
+
+						// Find the form if selector provided
+						if (formSelectorStr) {
+							form = document.querySelector(formSelectorStr);
+							if (!form) {
+								return {
+									success: false,
+									error: `Form not found with selector: ${formSelectorStr}`
+								};
+							}
+						}
+
+						// Fill fields
+						for (const [key, value] of Object.entries(data)) {
+							let field = null;
+
+							// Try different strategies to find the field
+							// 1. By name attribute
+							field = (form || document).querySelector(`[name="${key}"]`);
+
+							// 2. By id
+							if (!field) {
+								field = document.getElementById(key);
+							}
+
+							// 3. By data-testid
+							if (!field) {
+								field = (form || document).querySelector(`[data-testid="${key}"]`);
+							}
+
+							// 4. By placeholder (for inputs/textareas)
+							if (!field) {
+								field = (form || document).querySelector(`input[placeholder*="${key}"], textarea[placeholder*="${key}"]`);
+							}
+
+							// 5. By label text (find label, then associated input)
+							if (!field) {
+								const labels = Array.from((form || document).querySelectorAll('label'));
+								const matchingLabel = labels.find(label =>
+									label.textContent.toLowerCase().includes(key.toLowerCase())
+								);
+								if (matchingLabel) {
+									// Check if label has 'for' attribute
+									if (matchingLabel.htmlFor) {
+										field = document.getElementById(matchingLabel.htmlFor);
+									} else {
+										// Check if input is inside label
+										field = matchingLabel.querySelector('input, textarea, select');
+									}
+								}
+							}
+
+							if (field) {
+								if (setFieldValue(field, value)) {
+									filledFields++;
+									filled.push({
+										key: key,
+										fieldName: field.name || field.id || key,
+										fieldType: field.type || field.tagName.toLowerCase(),
+										value: field.value
+									});
+
+									// Track form if not already tracked
+									if (!form && field.form) {
+										form = field.form;
+									}
+								}
+							} else {
+								errors.push(`Field not found: ${key}`);
+							}
+						}
+
+						// Submit the form if requested
+						let submitted = false;
+						if (shouldSubmit && form) {
+							// Find submit button
+							let submitButton = form.querySelector('button[type="submit"], input[type="submit"]');
+
+							// If no explicit submit button, look for any button in the form
+							if (!submitButton) {
+								submitButton = form.querySelector('button');
+							}
+
+							if (submitButton) {
+								submitButton.click();
+								submitted = true;
+							} else {
+								// Try to submit the form directly
+								form.submit();
+								submitted = true;
+							}
+						} else if (shouldSubmit && !form) {
+							errors.push('Cannot submit: no form element found');
+						}
+
+						return {
+							success: filledFields > 0,
+							filledFields: filledFields,
+							totalFields: Object.keys(data).length,
+							filled: filled,
+							errors: errors,
+							submitted: submitted,
+							formFound: !!form
+						};
+					} catch (error) {
+						return {
+							success: false,
+							error: `Form filling failed: ${error.message}`
+						};
+					}
+				},
+				args: [formData, submit, formSelector],
+			});
+
+			const result = results[0]?.result;
+
+			if (!result) {
+				throw new Error("No result from form filling");
+			}
+
+			if (!result.success && result.error) {
+				throw new Error(result.error);
+			}
+
+			console.log(
+				`✅ Filled ${result.filledFields}/${result.totalFields} fields${result.submitted ? ' and submitted form' : ''}`,
+			);
+
+			return {
+				success: true,
+				tabId: tabId,
+				filledFields: result.filledFields,
+				totalFields: result.totalFields,
+				filled: result.filled,
+				errors: result.errors,
+				submitted: result.submitted,
+				formFound: result.formFound
+			};
+		} catch (error) {
+			console.error("Form filling failed:", error);
+			throw new Error(`Form filling error: ${error.message}`);
+		}
+	}
+
 	async handleGetElement(params) {
 		const { selector, tabId, multiple = false } = params;
 
@@ -1048,8 +1282,27 @@ class BROPServer {
 						// Add custom rules if needed
 						turndownService.remove(['script', 'style', 'noscript']);
 
-						// Add CSS selector extraction for actionable elements (if enabled)
+						// Add CSS selector extraction and element types if enabled
 						if (includeSelectors) {
+							// Add custom rule for form boundaries
+							turndownService.addRule('formBoundaries', {
+								filter: (node) => {
+									return node.getAttribute && (
+										node.getAttribute('data-form-start') === 'true' ||
+										node.getAttribute('data-form-end') === 'true'
+									);
+								},
+								replacement: (content, node) => {
+									if (node.getAttribute('data-form-start') === 'true') {
+										const selector = node.getAttribute('data-form-selector');
+										return `\n<!-- form-start${selector ? `: ${selector}` : ''} -->\n`;
+									} else {
+										return `\n<!-- form-end -->\n`;
+									}
+								}
+							});
+
+							// Add CSS selector extraction for actionable elements
 							turndownService.addRule('addSelectors', {
 								filter: (node) => {
 									// Only process actionable elements
@@ -1103,23 +1356,58 @@ class BROPServer {
 										}
 									}
 
+									// Determine element type
+									let elementType = '';
+									if (node.tagName === 'A') {
+										elementType = 'link';
+									} else if (node.tagName === 'BUTTON') {
+										elementType = 'button';
+									} else if (node.tagName === 'INPUT') {
+										elementType = node.type || 'input';
+									} else if (node.tagName === 'TEXTAREA') {
+										elementType = 'textarea';
+									} else if (node.tagName === 'SELECT') {
+										elementType = node.multiple ? 'select-multiple' : 'select-one';
+									} else if (node.tagName === 'LABEL') {
+										elementType = 'label';
+									} else if (node.onclick || node.hasAttribute('role')) {
+										elementType = node.getAttribute('role') || 'clickable';
+									} else {
+										elementType = node.tagName.toLowerCase();
+									}
+
 									// Format the output based on element type
 									if (node.tagName === 'A' && node.href) {
-										// For links, preserve the standard markdown format with selector appended
-										return `[${content}](${node.href})<!--${selector}-->`;
+										// For links, preserve the standard markdown format with selector and type
+										return `[${content}](${node.href})<!--${elementType}:${selector}-->`;
 									}
 									if (node.tagName === 'BUTTON' || node.onclick || node.hasAttribute('role')) {
 										// For buttons and clickable elements
-										return `[${content}]<!--${selector}-->`;
+										return `[${content}]<!--${elementType}:${selector}-->`;
 									}
 									if (['INPUT', 'TEXTAREA', 'SELECT'].includes(node.tagName)) {
-										// For form elements
-										const type = node.type || node.tagName.toLowerCase();
-										return `[${type}: ${content || node.placeholder || 'input'}]<!--${selector}-->`;
+										// For form elements, include the type in the text
+										const inputType = node.type || node.tagName.toLowerCase();
+										const displayContent = content || node.placeholder || node.value || 'input';
+										
+										// For checkboxes and radios, show their label or value
+										if (inputType === 'checkbox' || inputType === 'radio') {
+											const label = node.labels?.[0]?.textContent || content || node.value || inputType;
+											return `[${label}]<!--${elementType}:${selector}-->`;
+										}
+										
+										// For select elements, show options
+										if (node.tagName === 'SELECT') {
+											const options = Array.from(node.options).map(opt => opt.text).slice(0, 3).join(', ');
+											const more = node.options.length > 3 ? '...' : '';
+											return `[${elementType}: ${options}${more}]<!--${elementType}:${selector}-->`;
+										}
+										
+										return `[${inputType}: ${displayContent}]<!--${elementType}:${selector}-->`;
 									}
 
-									// Default format
-									return `${content}<!--${selector}-->`;
+									// Default format with element type
+									return `${content}<!--${elementType}:${selector}-->`;
 								}
 							});
 						}
@@ -1130,7 +1418,6 @@ class BROPServer {
 						if (enableDetailedResponse) {
 							// Use full document body
 							contentElement = document.body || document.documentElement;
-							contentHtml = contentElement.innerHTML;
 						} else {
 							// Try to find main content area
 							contentElement =
@@ -1140,6 +1427,47 @@ class BROPServer {
 								document.querySelector("#content") ||
 								document.body ||
 								document.documentElement;
+						}
+
+						// Pre-process forms if selectors are enabled
+						if (includeSelectors) {
+							// Clone the content element to avoid modifying the actual DOM
+							const clonedElement = contentElement.cloneNode(true);
+							
+							// Mark all forms with boundaries
+							const forms = clonedElement.querySelectorAll('form');
+							forms.forEach((form, index) => {
+								// Generate form selector
+								let formSelector = '';
+								if (form.id) {
+									formSelector = `#${form.id}`;
+								} else if (form.className) {
+									const classes = form.className.split(' ')
+										.filter(c => c && !c.startsWith('css-') && !c.match(/^[a-z0-9]{8,}$/i));
+									if (classes.length) {
+										formSelector = `.${classes[0]}`;
+									}
+								} else if (form.name) {
+									formSelector = `[name="${form.name}"]`;
+								} else {
+									formSelector = `form:nth-of-type(${index + 1})`;
+								}
+
+								// Add markers before and after form
+								const formStart = document.createElement('div');
+								formStart.setAttribute('data-form-start', 'true');
+								formStart.setAttribute('data-form-selector', formSelector);
+								formStart.style.display = 'none';
+								form.insertBefore(formStart, form.firstChild);
+
+								const formEnd = document.createElement('div');
+								formEnd.setAttribute('data-form-end', 'true');
+								formEnd.style.display = 'none';
+								form.appendChild(formEnd);
+							});
+
+							contentHtml = clonedElement.innerHTML;
+						} else {
 							contentHtml = contentElement.innerHTML;
 						}
 

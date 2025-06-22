@@ -209,6 +209,91 @@ Navigates a tab to a URL.
 }
 ```
 
+### Form Interaction
+
+#### `fill_form`
+
+Fills form fields with provided data and optionally submits the form.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab containing the form
+- `formData` (object, required): Key-value pairs of field names/values to fill
+- `submit` (boolean, optional): Submit the form after filling (default: false)
+- `formSelector` (string, optional): CSS selector to target specific form
+
+**Form Data Format:**
+
+The `formData` object uses field identifiers as keys. Fields are located using:
+1. `name` attribute
+2. `id` attribute
+3. `data-testid` attribute
+4. Placeholder text (partial match)
+5. Associated label text
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "tabId": 123,
+  "filledFields": 4,
+  "totalFields": 5,
+  "filled": [
+    {
+      "key": "username",
+      "fieldName": "username",
+      "fieldType": "text",
+      "value": "john.doe"
+    },
+    {
+      "key": "email",
+      "fieldName": "email",
+      "fieldType": "email",
+      "value": "john@example.com"
+    }
+  ],
+  "errors": ["Field not found: invalid_field"],
+  "submitted": true,
+  "formFound": true
+}
+```
+
+**Example Usage:**
+
+```json
+{
+  "method": "fill_form",
+  "params": {
+    "tabId": 123,
+    "formData": {
+      "username": "john.doe",
+      "email": "john@example.com",
+      "password": "secure123",
+      "country": "USA",
+      "newsletter": true,
+      "comments": "This is a test"
+    },
+    "submit": true
+  }
+}
+```
+
+**Field Type Handling:**
+
+- **Text inputs**: Set as string value
+- **Checkboxes/Radio**: Set with boolean or 'true'/'false'/'on'/'off'
+- **Select**: Match by option value or text
+- **Textarea**: Set as string value
+- **File inputs**: Cannot be set (security restriction)
+
+**Notes:**
+
+- Events (`input` and `change`) are triggered after setting values
+- If no form selector provided, fields are searched document-wide
+- Form is automatically detected from filled fields
+- Submit clicks button or calls form.submit()
+
 ### Content Extraction
 
 #### `get_page_content`
