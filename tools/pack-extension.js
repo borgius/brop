@@ -20,7 +20,7 @@ const EXTENSION_FILES = [
 
 	// Web accessible resources
 	"readability.js",
-	"dom-to-semantic-markdown.js",
+	"turndown.js",
 
 	// Popup interface
 	"popup.html",

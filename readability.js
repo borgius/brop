@@ -1253,8 +1253,9 @@ Readability.prototype = {
 					// - parent:             1 (no division)
 					// - grandparent:        2
 					// - great grandparent+: ancestor level * 3
+					let scoreDivider;
 					if (level === 0) {
-						const scoreDivider = 1;
+						scoreDivider = 1;
 					} else if (level === 1) {
 						scoreDivider = 2;
 					} else {

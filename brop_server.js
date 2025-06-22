@@ -24,6 +24,17 @@ class BROPServer {
 
 	setupMessageHandlers() {
 		// BROP command handlers
+		// TABS:
+		this.messageHandlers.set("create_tab", this.handleCreateTab.bind(this));
+		this.messageHandlers.set("close_tab", this.handleCloseTab.bind(this));
+		this.messageHandlers.set("list_tabs", this.handleListTabs.bind(this));
+		this.messageHandlers.set("activate_tab", this.handleActivateTab.bind(this));
+
+		// System methods
+		this.messageHandlers.set(
+			"get_server_status",
+			this.handleGetServerStatus.bind(this),
+		);
 		this.messageHandlers.set(
 			"get_console_logs",
 			this.handleGetConsoleLogs.bind(this),
@@ -53,13 +64,11 @@ class BROPServer {
 			"get_simplified_dom",
 			this.handleGetSimplifiedDOM.bind(this),
 		);
+
+		// Chrome Extension  management
 		this.messageHandlers.set(
 			"get_extension_errors",
 			this.handleGetExtensionErrors.bind(this),
-		);
-		this.messageHandlers.set(
-			"get_chrome_extension_errors",
-			this.handleGetChromeExtensionErrors.bind(this),
 		);
 		this.messageHandlers.set(
 			"clear_extension_errors",
@@ -70,21 +79,10 @@ class BROPServer {
 			this.handleReloadExtension.bind(this),
 		);
 		this.messageHandlers.set(
-			"test_reload_feature",
-			this.handleTestReloadFeature.bind(this),
-		);
-		this.messageHandlers.set("create_tab", this.handleCreateTab.bind(this));
-		this.messageHandlers.set("close_tab", this.handleCloseTab.bind(this));
-		this.messageHandlers.set("list_tabs", this.handleListTabs.bind(this));
-		this.messageHandlers.set("activate_tab", this.handleActivateTab.bind(this));
-		this.messageHandlers.set(
-			"get_server_status",
-			this.handleGetServerStatus.bind(this),
-		);
-		this.messageHandlers.set(
 			"get_extension_version",
 			this.handleGetExtensionVersion.bind(this),
 		);
+
 	}
 
 	setupErrorHandlers() {
@@ -413,13 +411,13 @@ class BROPServer {
 					const errors = window.addEventListener
 						? []
 						: [
-								{
-									level: "error",
-									message: "Page context not fully available",
-									timestamp: Date.now(),
-									source: "executeScript_test",
-								},
-							];
+							{
+								level: "error",
+								message: "Page context not fully available",
+								timestamp: Date.now(),
+								source: "executeScript_test",
+							},
+						];
 
 					return [...testLogs, ...errors];
 				},
@@ -694,6 +692,7 @@ class BROPServer {
 			tabId,
 			format = "markdown",
 			enableDetailedResponse = false,
+			includeSelectors = true,
 		} = params;
 
 		if (!tabId) {
@@ -731,14 +730,14 @@ class BROPServer {
 				files:
 					format === "html"
 						? ["readability.js"]
-						: ["dom-to-semantic-markdown.js"],
+						: ["turndown.js"],
 			});
 
 			// Now execute the extraction
 			const results = await chrome.scripting.executeScript({
 				target: { tabId: tabId },
 				func: (options) => {
-					const { format = "markdown", enableDetailedResponse = false } =
+					const { format = "markdown", enableDetailedResponse = false, includeSelectors = true } =
 						options;
 
 					try {
@@ -813,21 +812,112 @@ class BROPServer {
 							};
 						}
 
-						// Markdown format: use dom-to-semantic-markdown
-						console.log("Checking for dom-to-semantic-markdown library...");
+						// Markdown format: use Turndown
+						console.log("Checking for Turndown library...");
 
-						// The bundled library should expose htmlToSMD globally
-						if (!window.htmlToSMD) {
+						// The library should expose TurndownService globally
+						if (!window.TurndownService) {
 							throw new Error(
-								"dom-to-semantic-markdown library not loaded (htmlToSMD not found)",
+								"Turndown library not loaded (TurndownService not found)",
 							);
 						}
 
+						// Initialize Turndown with options
+						const turndownService = new window.TurndownService({
+							headingStyle: 'atx',
+							codeBlockStyle: 'fenced',
+							emDelimiter: '_',
+							strongDelimiter: '**',
+							linkStyle: 'inlined',
+							preformattedCode: true
+						});
+
+						// Add custom rules if needed
+						turndownService.remove(['script', 'style', 'noscript']);
+
+						// Add CSS selector extraction for actionable elements (if enabled)
+						if (includeSelectors) {
+							turndownService.addRule('addSelectors', {
+								filter: (node) => {
+									// Only process actionable elements
+									return ['BUTTON', 'A', 'INPUT', 'SELECT', 'TEXTAREA', 'LABEL'].includes(node.nodeName) ||
+										node.onclick !== null ||
+										node.hasAttribute('role') ||
+										(node.style && node.style.cursor === 'pointer') ||
+										node.hasAttribute('tabindex');
+								},
+								replacement: (content, node) => {
+									// Get the most reliable selector for the element
+									let selector = '';
+
+									// Priority 1: ID
+									if (node.id) {
+										selector = `#${node.id}`;
+									}
+									// Priority 2: aria-label
+									else if (node.getAttribute('aria-label')) {
+										selector = `[aria-label="${node.getAttribute('aria-label')}"]`;
+									}
+									// Priority 3: data-testid
+									else if (node.getAttribute('data-testid')) {
+										selector = `[data-testid="${node.getAttribute('data-testid')}"]`;
+									}
+									// Priority 4: name attribute (for form elements)
+									else if (node.name) {
+										selector = `[name="${node.name}"]`;
+									}
+									// Priority 5: First meaningful class
+									else if (node.className) {
+										const classes = node.className.split(' ')
+											.filter(c => c && !c.startsWith('css-') && !c.match(/^[a-z0-9]{8,}$/i)); // Filter out CSS modules and hash classes
+										if (classes.length) {
+											selector = `.${classes[0]}`;
+										}
+									}
+
+									// Fallback: Create a text-based selector
+									if (!selector) {
+										const text = node.textContent.trim().substring(0, 30);
+										if (text) {
+											selector = `${node.tagName.toLowerCase()}:contains("${text.replace(/"/g, '\\"')}")`;
+										} else {
+											// Last resort: nth-child selector
+											const parent = node.parentElement;
+											if (parent) {
+												const index = Array.from(parent.children).indexOf(node) + 1;
+												selector = `${node.tagName.toLowerCase()}:nth-child(${index})`;
+											}
+										}
+									}
+
+									// Format the output based on element type
+									if (node.tagName === 'A' && node.href) {
+										// For links, preserve the standard markdown format with selector appended
+										return `[${content}](${node.href})<!--${selector}-->`;
+									}
+									if (node.tagName === 'BUTTON' || node.onclick || node.hasAttribute('role')) {
+										// For buttons and clickable elements
+										return `[${content}]<!--${selector}-->`;
+									}
+									if (['INPUT', 'TEXTAREA', 'SELECT'].includes(node.tagName)) {
+										// For form elements
+										const type = node.type || node.tagName.toLowerCase();
+										return `[${type}: ${content || node.placeholder || 'input'}]<!--${selector}-->`;
+									}
+
+									// Default format
+									return `${content}<!--${selector}-->`;
+								}
+							});
+						}
+
 						let contentElement;
+						let contentHtml;
 
 						if (enableDetailedResponse) {
 							// Use full document body
 							contentElement = document.body || document.documentElement;
+							contentHtml = contentElement.innerHTML;
 						} else {
 							// Try to find main content area
 							contentElement =
@@ -837,17 +927,11 @@ class BROPServer {
 								document.querySelector("#content") ||
 								document.body ||
 								document.documentElement;
+							contentHtml = contentElement.innerHTML;
 						}
 
-						// Use the convertElementToMarkdown function from htmlToSMD
-						const markdown = window.htmlToSMD.convertElementToMarkdown(
-							contentElement,
-							{
-								refineUrls: false,
-								includeMetadata: true,
-								debug: false,
-							},
-						);
+						// Convert HTML to Markdown using Turndown
+						const markdown = turndownService.turndown(contentHtml);
 
 						return {
 							markdown: markdown,
@@ -856,8 +940,8 @@ class BROPServer {
 							timestamp: new Date().toISOString(),
 							stats: {
 								source: enableDetailedResponse
-									? "dom_to_semantic_markdown_full"
-									: "dom_to_semantic_markdown_main",
+									? "turndown_full"
+									: "turndown_main",
 								markdownLength: markdown.length,
 								processed: true,
 							},
@@ -871,7 +955,7 @@ class BROPServer {
 						};
 					}
 				},
-				args: [{ format, enableDetailedResponse }],
+				args: [{ format, enableDetailedResponse, includeSelectors }],
 			});
 
 			console.log("🔧 DEBUG: executeScript completed, raw results:", results);
@@ -1103,67 +1187,6 @@ class BROPServer {
 		};
 	}
 
-	async handleGetChromeExtensionErrors(params) {
-		const errors = [];
-
-		try {
-			// Method 1: Check chrome.runtime.lastError if available
-			if (chrome.runtime.lastError) {
-				errors.push({
-					type: "Chrome Runtime Error",
-					message: chrome.runtime.lastError.message,
-					timestamp: Date.now(),
-					source: "chrome.runtime.lastError",
-				});
-			}
-
-			// Method 2: Try to access extension management API for error details
-			if (chrome.management) {
-				try {
-					const extensionInfo = await new Promise((resolve, reject) => {
-						chrome.management.getSelf((info) => {
-							if (chrome.runtime.lastError) {
-								reject(new Error(chrome.runtime.lastError.message));
-							} else {
-								resolve(info);
-							}
-						});
-					});
-
-					// Note: Chrome doesn't provide direct API access to extension console errors
-					// This is a limitation of the Chrome Extension API
-				} catch (error) {
-					errors.push({
-						type: "Management API Error",
-						message: error.message,
-						timestamp: Date.now(),
-						source: "chrome.management.getSelf",
-					});
-				}
-			}
-
-			return {
-				chrome_errors: errors,
-				total_chrome_errors: errors.length,
-				note: "Chrome Extension API does not expose console errors directly. These are detected issues based on extension state.",
-				limitation:
-					"To see actual Chrome extension console errors, check chrome://extensions/ > Developer mode > Errors button for this extension",
-			};
-		} catch (error) {
-			return {
-				chrome_errors: [
-					{
-						type: "Chrome Error Detection Failed",
-						message: error.message,
-						timestamp: Date.now(),
-						source: "handleGetChromeExtensionErrors",
-					},
-				],
-				total_chrome_errors: 1,
-				error: `Failed to check Chrome extension errors: ${error.message}`,
-			};
-		}
-	}
 
 	async handleClearExtensionErrors(params) {
 		const clearedCount = this.extensionErrors.length;
@@ -1243,25 +1266,6 @@ class BROPServer {
 		}
 	}
 
-	async handleTestReloadFeature(params) {
-		// This is a NEW feature added specifically to test extension reload
-		const timestamp = new Date().toISOString();
-		const message =
-			params?.message || "Hello from the NEW reload test feature!";
-
-		console.log(
-			`[BROP] 🆕 NEW FEATURE CALLED: test_reload_feature at ${timestamp}`,
-		);
-
-		return {
-			success: true,
-			message: message,
-			timestamp: timestamp,
-			feature_version: "1.0.0",
-			reload_test: true,
-			note: "This feature was added to test extension reload mechanism",
-		};
-	}
 
 	logCall(method, type, params, result, error, duration) {
 		// Fix undefined/null method names

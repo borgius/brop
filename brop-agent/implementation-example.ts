@@ -1,19 +1,19 @@
-import { Agent } from "@mastra/core/agent";
-import { Memory } from "@mastra/memory";
 import { openai } from "@ai-sdk/openai";
-import { createTool } from "@mastra/core/tools";
-import { z } from "zod";
 import { Mastra } from "@mastra/core";
+import { Agent } from "@mastra/core/agent";
+import { createTool } from "@mastra/core/tools";
 import { MCPClient } from "@mastra/mcp";
+import { Memory } from "@mastra/memory";
+import { z } from "zod";
 
 // Initialize MCP client for BROP tools
 const mcpClient = new MCPClient({
-  servers: {
-    brop: {
-      command: "node",
-      args: ["./bridge/mcp-server.js"]
-    }
-  }
+	servers: {
+		brop: {
+			command: "node",
+			args: ["./bridge/mcp-server.js"],
+		},
+	},
 });
 
 // Get BROP tools
@@ -21,30 +21,34 @@ const bropTools = await mcpClient.getTools();
 
 // Define schemas for structured data
 const planStepSchema = z.object({
-  number: z.number(),
-  description: z.string(),
-  tool: z.string(),
-  parameters: z.any(),
-  successCriteria: z.string(),
-  status: z.enum(["pending", "in_progress", "completed", "failed"]).default("pending"),
-  result: z.any().optional(),
-  error: z.string().optional(),
-  conditional: z.object({
-    if: z.string(),
-    then: z.string(),
-    else: z.string()
-  }).optional()
+	number: z.number(),
+	description: z.string(),
+	tool: z.string(),
+	parameters: z.any(),
+	successCriteria: z.string(),
+	status: z
+		.enum(["pending", "in_progress", "completed", "failed"])
+		.default("pending"),
+	result: z.any().optional(),
+	error: z.string().optional(),
+	conditional: z
+		.object({
+			if: z.string(),
+			then: z.string(),
+			else: z.string(),
+		})
+		.optional(),
 });
 
 const executionPlanSchema = z.object({
-  taskId: z.string(),
-  taskName: z.string(),
-  estimatedDuration: z.string(),
-  steps: z.array(planStepSchema),
-  rollbackStrategy: z.object({
-    onError: z.enum(["continue", "pause_and_report", "rollback"]),
-    saveProgress: z.boolean()
-  })
+	taskId: z.string(),
+	taskName: z.string(),
+	estimatedDuration: z.string(),
+	steps: z.array(planStepSchema),
+	rollbackStrategy: z.object({
+		onError: z.enum(["continue", "pause_and_report", "rollback"]),
+		saveProgress: z.boolean(),
+	}),
 });
 
 // Memory configuration for planning agent
@@ -52,8 +56,8 @@ const planningMemory = new Memory();
 
 // Planning Agent
 export const planningAgent = new Agent({
-  name: "Browser Planning Agent",
-  instructions: `
+	name: "Browser Planning Agent",
+	instructions: `
 You are an expert planning agent for browser automation tasks. Create detailed, executable plans.
 
 ## Planning Guidelines:
@@ -88,14 +92,14 @@ Example for LinkedIn task:
 
 Always consider edge cases and include verification steps.
 `,
-  model: openai("gpt-4o"),
-  memory: planningMemory
+	model: openai("gpt-4o"),
+	memory: planningMemory,
 });
 
 // Execution Agent with BROP tools
 export const executionAgent = new Agent({
-  name: "Browser Execution Agent",
-  instructions: `
+	name: "Browser Execution Agent",
+	instructions: `
 You are a browser automation execution specialist. Execute plans step-by-step using BROP tools.
 
 ## Execution Process:
@@ -119,14 +123,14 @@ When extracting data, use execute_console for complex queries:
 
 Always update step status and store results.
 `,
-  model: openai("gpt-4o"),
-  tools: bropTools
+	model: openai("gpt-4o"),
+	tools: bropTools,
 });
 
 // Monitoring Agent
 export const monitoringAgent = new Agent({
-  name: "Progress Monitoring Agent",
-  instructions: `
+	name: "Progress Monitoring Agent",
+	instructions: `
 You are a progress monitoring agent. Track execution and communicate with users.
 
 ## Responsibilities:
@@ -149,21 +153,21 @@ Collected: [X] items so far"
 
 Keep updates concise but informative.
 `,
-  model: openai("gpt-4o-mini")
+	model: openai("gpt-4o-mini"),
 });
 
 // Custom tools for enhanced functionality
 const waitForElementTool = createTool({
-  id: "wait-for-element",
-  description: "Wait for an element to appear on the page",
-  inputSchema: z.object({
-    selector: z.string().describe("CSS selector or XPath"),
-    timeout: z.number().default(5000).describe("Max wait time in ms")
-  }),
-  execute: async ({ context }) => {
-    const result = await bropTools.execute_console.execute({
-      context: {
-        javascript: `
+	id: "wait-for-element",
+	description: "Wait for an element to appear on the page",
+	inputSchema: z.object({
+		selector: z.string().describe("CSS selector or XPath"),
+		timeout: z.number().default(5000).describe("Max wait time in ms"),
+	}),
+	execute: async ({ context }) => {
+		const result = await bropTools.execute_console.execute({
+			context: {
+				javascript: `
           await new Promise((resolve, reject) => {
             const startTime = Date.now();
             const checkInterval = setInterval(() => {
@@ -177,232 +181,242 @@ const waitForElementTool = createTool({
               }
             }, 100);
           });
-        `
-      }
-    });
-    return result;
-  }
+        `,
+			},
+		});
+		return result;
+	},
 });
 
 const extractProfileDataTool = createTool({
-  id: "extract-profile-data",
-  description: "Extract structured data from social media profiles",
-  inputSchema: z.object({
-    platform: z.enum(["linkedin", "twitter", "github"]),
-    dataPoints: z.array(z.string()).describe("Data to extract: name, bio, followers, etc.")
-  }),
-  execute: async ({ context }) => {
-    const selectors = {
-      linkedin: {
-        name: ".text-heading-xlarge",
-        title: ".text-body-medium",
-        followers: ".pvs-header__subtitle",
-        bio: ".pv-about-section"
-      },
-      twitter: {
-        name: "[data-testid='UserName']",
-        bio: "[data-testid='UserDescription']",
-        followers: "a[href$='/followers'] span"
-      },
-      github: {
-        name: ".vcard-fullname",
-        bio: ".user-profile-bio",
-        followers: "a[href$='followers'] span"
-      }
-    };
+	id: "extract-profile-data",
+	description: "Extract structured data from social media profiles",
+	inputSchema: z.object({
+		platform: z.enum(["linkedin", "twitter", "github"]),
+		dataPoints: z
+			.array(z.string())
+			.describe("Data to extract: name, bio, followers, etc."),
+	}),
+	execute: async ({ context }) => {
+		const selectors = {
+			linkedin: {
+				name: ".text-heading-xlarge",
+				title: ".text-body-medium",
+				followers: ".pvs-header__subtitle",
+				bio: ".pv-about-section",
+			},
+			twitter: {
+				name: "[data-testid='UserName']",
+				bio: "[data-testid='UserDescription']",
+				followers: "a[href$='/followers'] span",
+			},
+			github: {
+				name: ".vcard-fullname",
+				bio: ".user-profile-bio",
+				followers: "a[href$='followers'] span",
+			},
+		};
 
-    const platformSelectors = selectors[context.platform];
-    const extractScript = `
+		const platformSelectors = selectors[context.platform];
+		const extractScript = `
       const data = {};
-      ${context.dataPoints.map((point: string) => `
+      ${context.dataPoints
+				.map(
+					(point: string) => `
         const ${point}Element = document.querySelector('${platformSelectors[point] || ""}');
         data['${point}'] = ${point}Element?.textContent?.trim() || null;
-      `).join('\n')}
+      `,
+				)
+				.join("\n")}
       return data;
     `;
 
-    return await bropTools.execute_console.execute({
-      context: { javascript: extractScript }
-    });
-  }
+		return await bropTools.execute_console.execute({
+			context: { javascript: extractScript },
+		});
+	},
 });
 
 // Main orchestration class
 class BrowserAutomationSystem {
-  private planningAgent = planningAgent;
-  private executionAgent = executionAgent;
-  private monitoringAgent = monitoringAgent;
-  
-  constructor() {
-    // Agents are initialized above
-  }
+	private planningAgent = planningAgent;
+	private executionAgent = executionAgent;
+	private monitoringAgent = monitoringAgent;
 
-  async execute(request: {
-    task: string;
-    options?: {
-      maxItems?: number;
-      reportFormat?: "summary" | "detailed";
-      saveScreenshots?: boolean;
-    };
-  }) {
-    const taskId = `task-${Date.now()}`;
-    const threadId = `thread-${taskId}`;
+	constructor() {
+		// Agents are initialized above
+	}
 
-    try {
-      // Step 1: Generate execution plan
-      console.log("🤖 Planning task...");
-      const planResponse = await this.planningAgent.generate(
-        `Create a detailed execution plan for: ${request.task}`,
-        {
-          output: executionPlanSchema,
-          threadId,
-          resourceId: taskId
-        }
-      );
+	async execute(request: {
+		task: string;
+		options?: {
+			maxItems?: number;
+			reportFormat?: "summary" | "detailed";
+			saveScreenshots?: boolean;
+		};
+	}) {
+		const taskId = `task-${Date.now()}`;
+		const threadId = `thread-${taskId}`;
 
-      const plan = planResponse.object;
-      console.log(`📋 Plan created with ${plan.steps.length} steps`);
+		try {
+			// Step 1: Generate execution plan
+			console.log("🤖 Planning task...");
+			const planResponse = await this.planningAgent.generate(
+				`Create a detailed execution plan for: ${request.task}`,
+				{
+					output: executionPlanSchema,
+					threadId,
+					resourceId: taskId,
+				},
+			);
 
-      // Step 2: Initialize monitoring
-      await this.monitoringAgent.generate(
-        `Task started: ${plan.taskName}\nEstimated duration: ${plan.estimatedDuration}`,
-        { threadId, resourceId: taskId }
-      );
+			const plan = planResponse.object;
+			console.log(`📋 Plan created with ${plan.steps.length} steps`);
 
-      // Step 3: Execute plan step by step
-      const results = [];
-      let collectedData = {};
+			// Step 2: Initialize monitoring
+			await this.monitoringAgent.generate(
+				`Task started: ${plan.taskName}\nEstimated duration: ${plan.estimatedDuration}`,
+				{ threadId, resourceId: taskId },
+			);
 
-      for (const step of plan.steps) {
-        // Update progress
-        const progress = Math.round((step.number / plan.steps.length) * 100);
-        await this.monitoringAgent.generate(
-          `Progress: ${progress}%\nExecuting: ${step.description}`,
-          { threadId, resourceId: taskId }
-        );
+			// Step 3: Execute plan step by step
+			const results = [];
+			let collectedData = {};
 
-        // Execute step
-        console.log(`\n🔄 Executing step ${step.number}: ${step.description}`);
-        
-        try {
-          const stepResult = await this.executionAgent.generate(
-            `Execute this step using the ${step.tool} tool: ${JSON.stringify(step)}`,
-            {
-              threadId,
-              resourceId: taskId,
-              maxSteps: 3 // Allow tool retries
-            }
-          );
+			for (const step of plan.steps) {
+				// Update progress
+				const progress = Math.round((step.number / plan.steps.length) * 100);
+				await this.monitoringAgent.generate(
+					`Progress: ${progress}%\nExecuting: ${step.description}`,
+					{ threadId, resourceId: taskId },
+				);
 
-          // Update step status
-          step.status = "completed";
-          step.result = stepResult.text;
-          
-          // Extract any data from the result
-          if (stepResult.text.includes("extracted") || stepResult.text.includes("found")) {
-            try {
-              const extractedData = JSON.parse(stepResult.text.match(/\{.*\}/s)?.[0] || "{}");
-              collectedData = { ...collectedData, ...extractedData };
-            } catch (e) {
-              // Not JSON, store as text
-              collectedData[`step${step.number}`] = stepResult.text;
-            }
-          }
+				// Execute step
+				console.log(`\n🔄 Executing step ${step.number}: ${step.description}`);
 
-          console.log(`✅ Step ${step.number} completed`);
-        } catch (error) {
-          console.error(`❌ Step ${step.number} failed:`, error);
-          step.status = "failed";
-          step.error = error.message;
+				try {
+					const stepResult = await this.executionAgent.generate(
+						`Execute this step using the ${step.tool} tool: ${JSON.stringify(step)}`,
+						{
+							threadId,
+							resourceId: taskId,
+							maxSteps: 3, // Allow tool retries
+						},
+					);
 
-          // Handle failure based on rollback strategy
-          if (plan.rollbackStrategy.onError === "pause_and_report") {
-            await this.monitoringAgent.generate(
-              `Step ${step.number} failed: ${error.message}\nPausing execution for review.`,
-              { threadId, resourceId: taskId }
-            );
-            break;
-          }
-        }
+					// Update step status
+					step.status = "completed";
+					step.result = stepResult.text;
 
-        results.push({
-          number: step.number,
-          description: step.description,
-          status: step.status,
-          result: step.result,
-          error: step.error
-        });
+					// Extract any data from the result
+					if (
+						stepResult.text.includes("extracted") ||
+						stepResult.text.includes("found")
+					) {
+						try {
+							const extractedData = JSON.parse(
+								stepResult.text.match(/\{.*\}/s)?.[0] || "{}",
+							);
+							collectedData = { ...collectedData, ...extractedData };
+						} catch (e) {
+							// Not JSON, store as text
+							collectedData[`step${step.number}`] = stepResult.text;
+						}
+					}
 
-        // Save screenshots if requested
-        if (request.options?.saveScreenshots && step.number % 3 === 0) {
-          await bropTools.get_screenshot?.execute?.({
-            context: { filename: `step-${step.number}.png` }
-          });
-        }
-      }
+					console.log(`✅ Step ${step.number} completed`);
+				} catch (error) {
+					console.error(`❌ Step ${step.number} failed:`, error);
+					step.status = "failed";
+					step.error = error.message;
 
-      // Step 4: Generate final report
-      console.log("\n📊 Generating final report...");
-      const reportResponse = await this.monitoringAgent.generate(
-        `Create a ${request.options?.reportFormat || "summary"} report for task ${taskId}:
+					// Handle failure based on rollback strategy
+					if (plan.rollbackStrategy.onError === "pause_and_report") {
+						await this.monitoringAgent.generate(
+							`Step ${step.number} failed: ${error.message}\nPausing execution for review.`,
+							{ threadId, resourceId: taskId },
+						);
+						break;
+					}
+				}
+
+				results.push({
+					number: step.number,
+					description: step.description,
+					status: step.status,
+					result: step.result,
+					error: step.error,
+				});
+
+				// Save screenshots if requested
+				if (request.options?.saveScreenshots && step.number % 3 === 0) {
+					await bropTools.get_screenshot?.execute?.({
+						context: { filename: `step-${step.number}.png` },
+					});
+				}
+			}
+
+			// Step 4: Generate final report
+			console.log("\n📊 Generating final report...");
+			const reportResponse = await this.monitoringAgent.generate(
+				`Create a ${request.options?.reportFormat || "summary"} report for task ${taskId}:
         Plan: ${JSON.stringify(plan)}
         Results: ${JSON.stringify(results)}
         Collected Data: ${JSON.stringify(collectedData)}`,
-        {
-          threadId,
-          resourceId: taskId,
-          output: z.object({
-            success: z.boolean(),
-            summary: z.string(),
-            completedSteps: z.number(),
-            totalSteps: z.number(),
-            collectedData: z.any(),
-            errors: z.array(z.string()),
-            recommendations: z.array(z.string()).optional()
-          })
-        }
-      );
+				{
+					threadId,
+					resourceId: taskId,
+					output: z.object({
+						success: z.boolean(),
+						summary: z.string(),
+						completedSteps: z.number(),
+						totalSteps: z.number(),
+						collectedData: z.any(),
+						errors: z.array(z.string()),
+						recommendations: z.array(z.string()).optional(),
+					}),
+				},
+			);
 
-      return reportResponse.object;
-
-    } catch (error) {
-      console.error("System error:", error);
-      return {
-        success: false,
-        summary: "Task execution failed",
-        error: error.message
-      };
-    }
-  }
+			return reportResponse.object;
+		} catch (error) {
+			console.error("System error:", error);
+			return {
+				success: false,
+				summary: "Task execution failed",
+				error: error.message,
+			};
+		}
+	}
 }
 
 // Example usage
 async function main() {
-  const automation = new BrowserAutomationSystem();
+	const automation = new BrowserAutomationSystem();
 
-  // Example 1: LinkedIn AI Influencer Subscription
-  const result = await automation.execute({
-    task: "Subscribe to top 5 AI influencers on LinkedIn",
-    options: {
-      maxItems: 5,
-      reportFormat: "detailed",
-      saveScreenshots: true
-    }
-  });
+	// Example 1: LinkedIn AI Influencer Subscription
+	const result = await automation.execute({
+		task: "Subscribe to top 5 AI influencers on LinkedIn",
+		options: {
+			maxItems: 5,
+			reportFormat: "detailed",
+			saveScreenshots: true,
+		},
+	});
 
-  console.log("\n🎉 Task completed!");
-  console.log(result);
+	console.log("\n🎉 Task completed!");
+	console.log(result);
 
-  // Example 2: GitHub Repository Analysis
-  const githubResult = await automation.execute({
-    task: "Analyze top 10 TypeScript repositories on GitHub and extract their star counts",
-    options: {
-      reportFormat: "summary"
-    }
-  });
+	// Example 2: GitHub Repository Analysis
+	const githubResult = await automation.execute({
+		task: "Analyze top 10 TypeScript repositories on GitHub and extract their star counts",
+		options: {
+			reportFormat: "summary",
+		},
+	});
 
-  console.log("\n📈 GitHub Analysis:");
-  console.log(githubResult);
+	console.log("\n📈 GitHub Analysis:");
+	console.log(githubResult);
 }
 
 // Export the class

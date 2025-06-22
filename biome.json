@@ -7,7 +7,7 @@
 			"build/**",
 			"*.min.js",
 			"readability.js",
-			"dom-to-semantic-markdown.js"
+			"turndown.js"
 		]
 	},
 	"linter": {

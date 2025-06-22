@@ -126,7 +126,7 @@ class UnifiedBridgeServer {
 		this.pendingCommandInfo = new Map(); // messageId -> { command, connection } for response logging
 		this.messageCounter = 0;
 		this.connectionCounter = 0;
-		
+
 		// Default browser context ID (consistent across session)
 		this.defaultBrowserContextId = this.generateBrowserContextId();
 
@@ -152,7 +152,7 @@ class UnifiedBridgeServer {
 		// Logs for debugging
 		this.logs = [];
 		this.maxLogs = 1000;
-		
+
 		// CDP message logging
 		this.cdpLogs = [];
 		this.maxCdpLogs = 5000;
@@ -569,7 +569,7 @@ class UnifiedBridgeServer {
 			const sessionId = data.sessionId;
 
 			this.logger.logSuccess("CDP", method, `${clientId}:${messageId}`);
-			
+
 			// Log CDP request
 			if (this.cdpLoggingEnabled) {
 				this.logCdpMessage({
@@ -658,10 +658,10 @@ class UnifiedBridgeServer {
 			if (messageType === "ping") {
 				// Respond with pong
 				if (this.extensionClient && this.extensionClient.readyState === WebSocket.OPEN) {
-					this.extensionClient.send(JSON.stringify({ 
-						type: "pong", 
+					this.extensionClient.send(JSON.stringify({
+						type: "pong",
 						timestamp: Date.now(),
-						originalTimestamp: data.timestamp 
+						originalTimestamp: data.timestamp
 					}));
 				}
 				return;
@@ -734,7 +734,7 @@ class UnifiedBridgeServer {
 						if (requestInfo.sessionId) {
 							cdpResponse.sessionId = requestInfo.sessionId;
 						}
-						
+
 						// Log CDP response
 						if (this.cdpLoggingEnabled) {
 							this.logCdpMessage({
@@ -748,7 +748,7 @@ class UnifiedBridgeServer {
 								type: 'response'
 							});
 						}
-						
+
 						requestInfo.originalClient.send(JSON.stringify(cdpResponse));
 					}
 				}
@@ -759,11 +759,11 @@ class UnifiedBridgeServer {
 					const { sessionId, targetInfo } = data.params;
 					const targetId = targetInfo.targetId;
 					const connectionId = data.connectionId;
-					
+
 					// Create session mapping
 					this.targetToSession.set(targetId, sessionId);
 					this.sessionToTarget.set(sessionId, targetId);
-					
+
 					// Find the client for this connection
 					let clientId = null;
 					for (const [cid, client] of this.cdpClients) {
@@ -772,23 +772,23 @@ class UnifiedBridgeServer {
 							break;
 						}
 					}
-					
+
 					if (clientId) {
 						this.sessionChannels.set(sessionId, {
 							clientId: clientId,
 							targetId: targetId,
 							created: Date.now(),
 						});
-						
+
 						const clientInfo = this.cdpClients.get(clientId);
 						if (clientInfo) {
 							clientInfo.targets.add(targetId);
 						}
 					}
-					
+
 					console.log(`🎭 Created session mapping: ${sessionId} -> ${targetId}`);
 				}
-				
+
 				// Route all CDP events (including Target.attachedToTarget)
 				this.routeCdpEvent(data);
 			}
@@ -869,7 +869,7 @@ class UnifiedBridgeServer {
 			const mainClient = this.getMainBrowserClient();
 			if (mainClient) {
 				mainClient.ws.send(messageStr);
-				
+
 				// Log CDP event
 				if (this.cdpLoggingEnabled) {
 					this.logCdpMessage({
@@ -889,7 +889,7 @@ class UnifiedBridgeServer {
 			const sessionClient = this.getSessionClientForTarget(targetId);
 			if (sessionClient) {
 				sessionClient.ws.send(messageStr);
-				
+
 				// Log CDP event
 				if (this.cdpLoggingEnabled) {
 					this.logCdpMessage({
@@ -908,7 +908,7 @@ class UnifiedBridgeServer {
 				const mainClient = this.getMainBrowserClient();
 				if (mainClient) {
 					mainClient.ws.send(messageStr);
-					
+
 					// Log CDP event fallback
 					if (this.cdpLoggingEnabled) {
 						this.logCdpMessage({
@@ -964,7 +964,7 @@ class UnifiedBridgeServer {
 				.toUpperCase(),
 		).join("");
 	}
-	
+
 	generateBrowserContextId() {
 		// Generate browser context ID in same format as native Chrome (32 char uppercase hex)
 		return Array.from({ length: 32 }, () =>
@@ -973,11 +973,11 @@ class UnifiedBridgeServer {
 				.toUpperCase(),
 		).join("");
 	}
-	
+
 	logCdpMessage(logEntry) {
 		// Add CDP message to log
 		this.cdpLogs.push(logEntry);
-		
+
 		// Keep only the last maxCdpLogs entries
 		if (this.cdpLogs.length > this.maxCdpLogs) {
 			this.cdpLogs.splice(0, this.cdpLogs.length - this.maxCdpLogs);
