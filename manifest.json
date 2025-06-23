@@ -1,13 +1,14 @@
 {
 	"manifest_version": 3,
 	"name": "Browser Remote Operations Protocol",
-	"version": "2.5.7",
+	"version": "2.6.0",
 	"description": "Chrome extension with multiplexed BROP/CDP protocol support for advanced browser automation",
 	"permissions": [
 		"tabs",
 		"storage",
 		"scripting",
-		"debugger"
+		"debugger",
+		"alarms"
 	],
 	"icons": {
 		"16": "icons/icon16.png",

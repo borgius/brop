@@ -59,11 +59,12 @@ pnpm run test:bridge     # Test unified bridge (recommended)
 pnpm run test:wikipedia  # Run real-world Wikipedia tests
 pnpm run test:cdp        # Test CDP compatibility
 pnpm run test:brop       # Test BROP protocol
+pnpm run test:keepalive  # Test enhanced keepalive mechanisms
 
 # Console capture testing
-node tests/test-explicit-console-capture.js  # Test explicit console capture workflow
-node tests/test-clear-console-logs.js        # Test clear logs functionality
-node tests/test-console-logs.js              # Legacy console capture test
+pnpm run test:console        # Test explicit console capture workflow
+pnpm run test:console:clear  # Test clear logs functionality
+pnpm run test:console:legacy # Legacy console capture test
 ```
 
 ### Extension Management
@@ -153,6 +154,74 @@ pnpm run cdp:analyze
 node tools/cdp-traffic-analyzer.js native.jsonl bridge.jsonl output.html
 ```
 
+## Enhanced Keepalive Mechanisms
+
+The extension now includes multiple redundant keepalive mechanisms to prevent Chrome service worker termination:
+
+### 🔄 Multiple Keepalive Strategies
+
+1. **Storage-based Heartbeat** (`main_background.js:471-513`)
+   - Adaptive frequency: 30s when connected, 10s when disconnected
+   - Stores connection status and activity timestamps
+   - Triggers reconnection attempts on heartbeat
+
+2. **Chrome Alarms API** (`main_background.js:730-781`)
+   - Reliable background execution every 2 minutes
+   - Survives service worker termination
+   - Restarts other mechanisms if they stop
+
+3. **Tab Activity Monitoring** (`main_background.js:747-773`)
+   - Monitors tab activation, updates, and creation
+   - Triggers reconnection on user activity
+   - Maintains connection awareness during browsing
+
+4. **Content Script Pings** (`content.js:1171-1228`)
+   - Distributed keepalive from active web pages
+   - User interaction-triggered pings (throttled)
+   - Storage-based communication (works when service worker sleeps)
+
+5. **Health Monitoring** (`main_background.js:897-935`)
+   - Automatic health checks every minute
+   - Detects stale heartbeats and restarts mechanisms
+   - Aggressive recovery for long-term disconnection
+
+### 🛠️ Testing Keepalive Mechanisms
+
+```bash
+# Run comprehensive keepalive test
+pnpm run test:keepalive
+
+# Manual verification steps:
+# 1. Check extension console for keepalive logs
+# 2. Monitor Chrome storage updates
+# 3. Verify alarm-based triggers
+# 4. Test with bridge server stopped
+```
+
+### 📊 Monitoring Keepalive Health
+
+**Extension Console** (`chrome://extensions/` → BROP → Inspect views):
+```
+💾 Setting up enhanced keepalive mechanisms
+💓 Storage heartbeat #N (connected/disconnected) 
+⏰ Alarm keepalive triggered
+📱 Received content script keepalive ping
+```
+
+**Chrome Storage** (Extension Console → Application → Storage):
+```javascript
+heartbeat: 1234567890           // Updates every 30s/10s
+lastAlarmKeepalive: 1234567890  // Updates every 2 minutes  
+contentScriptPing: 1234567890   // Updates from active tabs
+```
+
+**Content Script Console** (F12 on any webpage):
+```
+💓 Setting up content script keepalive for service worker
+👁️ Tab became visible, sending service worker ping
+📵 Service worker ping via messaging failed (worker might be sleeping)
+```
+
 ## Protocol Details
 
 ### BROP Protocol Commands
@@ -161,7 +230,7 @@ Native browser automation commands handled by `brop_server.js`:
 - `navigate_to_url` - Browser navigation
 - `get_page_content` - Content extraction with Readability
 - `get_simplified_dom` - DOM structure extraction
-- `get_console_logs` - Console log capture
+- `start_console_capture`, `get_console_logs`, `clear_console_logs`, `stop_console_capture` - Console log capture
 - `execute_console` - JavaScript execution
 - `click_element`, `type_text` - Element interaction
 - `create_tab`, `close_tab`, `list_tabs` - Tab management

@@ -9,6 +9,7 @@ class BROPContentScript {
 	constructor() {
 		this.setupMessageListener();
 		this.setupConsoleInterception();
+		this.setupServiceWorkerKeepalive();
 		this.consoleLogs = [];
 		this.maxConsoleHistory = 1000;
 	}
@@ -1165,6 +1166,65 @@ class BROPContentScript {
 		}
 
 		return String(result);
+	}
+
+	setupServiceWorkerKeepalive() {
+		// Help keep the service worker alive by sending periodic pings
+		console.log('💓 Setting up content script keepalive for service worker');
+		
+		// Send initial ping
+		this.sendServiceWorkerPing();
+		
+		// Send ping every 2 minutes
+		setInterval(() => {
+			this.sendServiceWorkerPing();
+		}, 2 * 60 * 1000);
+		
+		// Send ping when page becomes visible (user returns to tab)
+		document.addEventListener('visibilitychange', () => {
+			if (!document.hidden) {
+				console.log('👁️ Tab became visible, sending service worker ping');
+				this.sendServiceWorkerPing();
+			}
+		});
+		
+		// Send ping on user interaction
+		['click', 'keydown', 'scroll'].forEach(eventType => {
+			let lastPing = 0;
+			document.addEventListener(eventType, () => {
+				const now = Date.now();
+				// Throttle to once per minute to avoid spam
+				if (now - lastPing > 60 * 1000) {
+					lastPing = now;
+					this.sendServiceWorkerPing();
+				}
+			}, { passive: true });
+		});
+	}
+
+	async sendServiceWorkerPing() {
+		try {
+			// Use storage to send ping (works even if service worker is sleeping)
+			await chrome.storage.local.set({
+				contentScriptPing: Date.now(),
+				tabUrl: window.location.href,
+				tabTitle: document.title
+			});
+			
+			// Also try direct messaging (will fail if service worker is sleeping)
+			chrome.runtime.sendMessage({
+				type: 'CONTENT_SCRIPT_KEEPALIVE',
+				timestamp: Date.now(),
+				url: window.location.href,
+				title: document.title
+			}).catch(() => {
+				// Ignore errors - service worker might be sleeping
+				console.log('📵 Service worker ping via messaging failed (worker might be sleeping)');
+			});
+			
+		} catch (error) {
+			console.error('Error sending service worker ping:', error);
+		}
 	}
 }
 

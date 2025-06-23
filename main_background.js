@@ -37,6 +37,7 @@ class MainBackground {
 		this.setupPopupMessageHandler();
 		this.setupStorageKeepalive();
 		this.setupTabHandlers();
+		this.monitorHealth();
 		this.connectToBridge();
 	}
 
@@ -109,6 +110,9 @@ class MainBackground {
 
 						case "CLEAR_LOGS":
 							return await this.clearLogs();
+
+						case "CONTENT_SCRIPT_KEEPALIVE":
+							return this.handleContentScriptKeepalive(message);
 
 						default:
 							throw new Error(`Unknown popup message type: ${message.type}`);
@@ -461,9 +465,16 @@ class MainBackground {
 	}
 
 	setupStorageKeepalive() {
-		console.log("💾 Setting up storage-based keepalive");
+		console.log("💾 Setting up enhanced keepalive mechanisms");
 		
-		// Set up storage heartbeat - update every 30 seconds
+		// Multiple keepalive strategies
+		this.setupStorageHeartbeat();
+		this.setupAlarmKeepAlive();
+		this.setupTabKeepAlive();
+	}
+
+	setupStorageHeartbeat() {
+		// Storage heartbeat - more frequent when disconnected
 		this.storageInterval = setInterval(async () => {
 			try {
 				const result = await chrome.storage.local.get(['heartbeatCounter']);
@@ -474,17 +485,32 @@ class MainBackground {
 					heartbeatCounter: counter,
 					extensionActive: true,
 					connectionStatus: this.connectionStatus,
-					isConnected: this.isConnected
+					isConnected: this.isConnected,
+					lastActivity: Date.now(),
+					serviceWorkerPID: chrome.runtime.id
 				});
 				
-				// Log every 10th heartbeat to avoid spam
-				if (counter % 10 === 0) {
-					console.log(`💓 Storage heartbeat #${counter}`);
+				// More frequent heartbeat when disconnected
+				const interval = this.isConnected ? 30000 : 10000;
+				if (this.storageInterval && this.storageInterval !== interval) {
+					clearInterval(this.storageInterval);
+					this.setupStorageHeartbeat();
+				}
+				
+				// Log every 6th heartbeat to reduce spam
+				if (counter % 6 === 0) {
+					console.log(`💓 Storage heartbeat #${counter} (${this.isConnected ? 'connected' : 'disconnected'})`);
+				}
+				
+				// Try to reconnect if disconnected for too long
+				if (!this.isConnected && counter % 3 === 0) {
+					console.log("🔄 Heartbeat-triggered reconnection attempt");
+					this.connectToBridge();
 				}
 			} catch (error) {
 				console.error("Error updating storage heartbeat:", error);
 			}
-		}, 30000); // Every 30 seconds
+		}, this.isConnected ? 30000 : 10000);
 		
 		// Listen for storage changes (including from content scripts or popup)
 		chrome.storage.onChanged.addListener((changes, namespace) => {
@@ -500,6 +526,12 @@ class MainBackground {
 					console.log('⏰ Wakeup request received');
 					this.handleWakeupRequest();
 				}
+				
+				// Handle keep-alive pings from content scripts
+				if (changes.contentScriptPing) {
+					console.log('📱 Content script ping received');
+					this.handleContentScriptPing();
+				}
 			}
 		});
 		
@@ -507,7 +539,8 @@ class MainBackground {
 		chrome.storage.local.set({
 			heartbeat: Date.now(),
 			heartbeatCounter: 0,
-			extensionStarted: Date.now()
+			extensionStarted: Date.now(),
+			serviceWorkerStartTime: Date.now()
 		});
 	}
 
@@ -588,8 +621,12 @@ class MainBackground {
 		// Update status
 		await chrome.storage.local.set({
 			wakeupResponse: Date.now(),
-			serviceWorkerAwake: true
+			serviceWorkerAwake: true,
+			lastWakeupTime: Date.now()
 		});
+		
+		// Restart all keepalive mechanisms
+		this.restartKeepAliveMechanisms();
 		
 		// Ensure connections are active
 		if (!this.isConnected) {
@@ -597,9 +634,215 @@ class MainBackground {
 		}
 	}
 
+	handleContentScriptKeepalive(message) {
+		console.log('📱 Received content script keepalive ping');
+		
+		// Update storage to show we received the ping
+		chrome.storage.local.set({
+			lastContentScriptKeepalive: Date.now(),
+			contentScriptKeepaliveReceived: true,
+			lastContentScriptUrl: message.url,
+			lastContentScriptTitle: message.title
+		}).catch(() => {
+			// Ignore storage errors
+		});
+		
+		// If not connected, try to reconnect
+		if (!this.isConnected) {
+			console.log('🔄 Content script ping triggered reconnection attempt');
+			this.connectToBridge();
+		}
+		
+		return { success: true, timestamp: Date.now() };
+	}
+
+	async handleContentScriptPing() {
+		// Handle pings from content scripts to keep service worker alive
+		try {
+			await chrome.storage.local.set({
+				contentScriptPongResponse: Date.now(),
+				lastContentScriptPing: Date.now()
+			});
+			
+			// If not connected, try to reconnect
+			if (!this.isConnected) {
+				console.log("🔄 Content script ping triggered reconnection");
+				this.connectToBridge();
+			}
+		} catch (error) {
+			console.error("Error handling content script ping:", error);
+		}
+	}
+
+	setupAlarmKeepAlive() {
+		// Use Chrome alarms API for reliable background execution
+		try {
+			// Clear any existing alarms
+			chrome.alarms.clear('brop-keepalive');
+			
+			// Create alarm that fires every 2 minutes
+			chrome.alarms.create('brop-keepalive', {
+				delayInMinutes: 0.5, // Start in 30 seconds
+				periodInMinutes: 2 // Repeat every 2 minutes
+			});
+			
+			// Listen for alarm events
+			chrome.alarms.onAlarm.addListener((alarm) => {
+				if (alarm.name === 'brop-keepalive') {
+					console.log('⏰ Alarm keepalive triggered');
+					this.handleAlarmKeepAlive();
+				}
+			});
+			
+			console.log('⏰ Alarm-based keepalive configured');
+		} catch (error) {
+			console.error('Error setting up alarm keepalive:', error);
+		}
+	}
+
+	async handleAlarmKeepAlive() {
+		try {
+			// Update storage to show alarm is working
+			await chrome.storage.local.set({
+				lastAlarmKeepalive: Date.now(),
+				alarmKeepaliveCount: await this.getAlarmCount() + 1
+			});
+			
+			// Check connection and try to reconnect if needed
+			if (!this.isConnected) {
+				console.log('🔄 Alarm-triggered reconnection attempt');
+				this.connectToBridge();
+			}
+			
+			// Restart other keepalive mechanisms if they seem to have stopped
+			if (!this.pingInterval) {
+				console.log('🔄 Restarting ping interval from alarm');
+				this.startKeepalive();
+			}
+			
+		} catch (error) {
+			console.error('Error in alarm keepalive handler:', error);
+		}
+	}
+
+	async getAlarmCount() {
+		try {
+			const result = await chrome.storage.local.get(['alarmKeepaliveCount']);
+			return result.alarmKeepaliveCount || 0;
+		} catch (error) {
+			return 0;
+		}
+	}
+
+	setupTabKeepAlive() {
+		// Use tab events to keep service worker alive
+		try {
+			// Listen to various tab events that indicate user activity
+			chrome.tabs.onActivated.addListener(() => {
+				this.handleTabActivity('tab_activated');
+			});
+			
+			chrome.tabs.onUpdated.addListener(() => {
+				this.handleTabActivity('tab_updated');
+			});
+			
+			chrome.tabs.onCreated.addListener(() => {
+				this.handleTabActivity('tab_created');
+			});
+			
+			console.log('📱 Tab-based keepalive configured');
+		} catch (error) {
+			console.error('Error setting up tab keepalive:', error);
+		}
+	}
+
+	async handleTabActivity(activityType) {
+		try {
+			await chrome.storage.local.set({
+				lastTabActivity: Date.now(),
+				lastTabActivityType: activityType
+			});
+			
+			// Use tab activity as a trigger to check connection
+			if (!this.isConnected && this.reconnectAttempts < 5) {
+				console.log(`🔄 Tab activity (${activityType}) triggered reconnection check`);
+				this.connectToBridge();
+			}
+		} catch (error) {
+			console.error('Error handling tab activity:', error);
+		}
+	}
+
+
+
+	restartKeepAliveMechanisms() {
+		console.log('🔄 Restarting all keepalive mechanisms');
+		
+		// Restart ping/pong if it's not running
+		if (!this.pingInterval && this.isConnected) {
+			this.startKeepalive();
+		}
+		
+		// Restart storage heartbeat with current connection status
+		if (this.storageInterval) {
+			clearInterval(this.storageInterval);
+			this.setupStorageHeartbeat();
+		}
+		
+		// Refresh alarm
+		this.setupAlarmKeepAlive();
+	}
+
 	// All CDP commands are now handled by the CDPServer instance
 	// All BROP commands are now handled by the BROPServer instance
 	// Clean multiplexing layer with delegated command processing
+	
+	// Enhanced error recovery and connection management
+	monitorHealth() {
+		// Health monitoring that runs every minute
+		setInterval(async () => {
+			try {
+				const now = Date.now();
+				const result = await chrome.storage.local.get([
+					'heartbeat', 'lastActivity', 'extensionStarted'
+				]);
+				
+				// Check if we've been idle for too long
+				const timeSinceLastActivity = now - (result.lastActivity || result.extensionStarted || now);
+				const timeSinceHeartbeat = now - (result.heartbeat || now);
+				
+				// If we haven't had activity for 10 minutes and not connected, be more aggressive
+				if (!this.isConnected && timeSinceLastActivity > 10 * 60 * 1000) {
+					console.log('🚨 Extension has been idle and disconnected for 10+ minutes, forcing reconnection');
+					this.reconnectAttempts = 0; // Reset attempts
+					this.connectToBridge();
+				}
+				
+				// If heartbeat is stale, restart mechanisms
+				if (timeSinceHeartbeat > 2 * 60 * 1000) { // 2 minutes
+					console.log('💓 Heartbeat is stale, restarting keepalive mechanisms');
+					this.restartKeepAliveMechanisms();
+				}
+				
+				await chrome.storage.local.set({
+					lastHealthCheck: now,
+					healthCheckCount: (await this.getHealthCheckCount()) + 1
+				});
+				
+			} catch (error) {
+				console.error('Error in health monitor:', error);
+			}
+		}, 60 * 1000); // Every minute
+	}
+	
+	async getHealthCheckCount() {
+		try {
+			const result = await chrome.storage.local.get(['healthCheckCount']);
+			return result.healthCheckCount || 0;
+		} catch (error) {
+			return 0;
+		}
+	}
 }
 
 // Initialize the main background script

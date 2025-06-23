@@ -1,6 +1,6 @@
 {
   "name": "mcp-brop",
-  "version": "2.1.0",
+  "version": "2.6.0",
   "description": "Browser Remote Operations Protocol with multiplexed CDP relay support",
   "type": "module",
   "main": "background.js",
@@ -23,6 +23,7 @@
     "test:console": "node tests/test-explicit-console-capture.js",
     "test:console:clear": "node tests/test-clear-console-logs.js",
     "test:console:legacy": "node tests/test-console-logs.js",
+    "test:keepalive": "node tests/test-enhanced-keepalive.js",
     "cdp:logs": "node tools/cdp-log-viewer.js",
     "cdp:logs:pretty": "node tools/cdp-log-viewer.js -f pretty",
     "cdp:logs:export": "node tools/cdp-log-viewer.js -l 0 -f jsonl -o reports/cdp_dump_bridge.jsonl",
