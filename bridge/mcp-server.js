@@ -554,6 +554,40 @@ class BROPMCPServer {
 					},
 				};
 
+			case "brop_start_console_capture":
+				return {
+					method: "start_console_capture",
+					params: {
+						tabId: args.tabId,
+					},
+				};
+
+			case "brop_get_console_logs":
+				return {
+					method: "get_console_logs",
+					params: {
+						tabId: args.tabId,
+						limit: args.limit,
+						level: args.level,
+					},
+				};
+
+			case "brop_clear_console_logs":
+				return {
+					method: "clear_console_logs",
+					params: {
+						tabId: args.tabId,
+					},
+				};
+
+			case "brop_stop_console_capture":
+				return {
+					method: "stop_console_capture",
+					params: {
+						tabId: args.tabId,
+					},
+				};
+
 			default:
 				throw new Error(`Unknown tool: ${toolName}`);
 		}
@@ -972,6 +1006,144 @@ server.tool(
 					{
 						type: "text",
 						text: JSON.stringify(status, null, 2),
+					},
+				],
+			};
+		} catch (error) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Error: ${error.message}`,
+					},
+				],
+			};
+		}
+	},
+);
+
+// Console Log Capture Tools
+server.tool(
+	"brop_start_console_capture",
+	"Start capturing console logs for a tab using Chrome Debugger API",
+	{
+		tabId: z.number().describe("Tab ID to start capturing logs from"),
+	},
+	async ({ tabId }) => {
+		try {
+			const result = await bropServer.executeBROPCommand(
+				"brop_start_console_capture",
+				{ tabId },
+			);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(result, null, 2),
+					},
+				],
+			};
+		} catch (error) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Error: ${error.message}`,
+					},
+				],
+			};
+		}
+	},
+);
+
+server.tool(
+	"brop_get_console_logs",
+	"Retrieve console logs captured since capture was started (requires active capture session)",
+	{
+		tabId: z.number().describe("Tab ID to get logs from"),
+		limit: z.number().optional().describe("Maximum logs to return (default: all captured)"),
+		level: z
+			.enum(["log", "warn", "error", "info", "debug"])
+			.optional()
+			.describe("Filter by log level"),
+	},
+	async ({ tabId, limit, level }) => {
+		try {
+			const result = await bropServer.executeBROPCommand(
+				"brop_get_console_logs",
+				{ tabId, limit, level },
+			);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(result, null, 2),
+					},
+				],
+			};
+		} catch (error) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Error: ${error.message}`,
+					},
+				],
+			};
+		}
+	},
+);
+
+server.tool(
+	"brop_clear_console_logs",
+	"Clear captured console logs without stopping the capture session",
+	{
+		tabId: z.number().describe("Tab ID to clear logs for"),
+	},
+	async ({ tabId }) => {
+		try {
+			const result = await bropServer.executeBROPCommand(
+				"brop_clear_console_logs",
+				{ tabId },
+			);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(result, null, 2),
+					},
+				],
+			};
+		} catch (error) {
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Error: ${error.message}`,
+					},
+				],
+			};
+		}
+	},
+);
+
+server.tool(
+	"brop_stop_console_capture",
+	"Stop console log collection and detach the debugger",
+	{
+		tabId: z.number().describe("Tab ID to stop capturing logs for"),
+	},
+	async ({ tabId }) => {
+		try {
+			const result = await bropServer.executeBROPCommand(
+				"brop_stop_console_capture",
+				{ tabId },
+			);
+			return {
+				content: [
+					{
+						type: "text",
+						text: JSON.stringify(result, null, 2),
 					},
 				],
 			};
