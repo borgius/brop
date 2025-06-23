@@ -867,17 +867,47 @@ try {
 - **Content Injection**: Add custom functionality to pages
 - **State Inspection**: Debug and analyze page state
 
-### Console Operations
+### Console Log Capture
+
+BROP provides explicit console log capture using Chrome's Debugger API for reliable log collection. The capture system requires starting/stopping sessions and provides full control over when logs are collected.
+
+#### `start_console_capture`
+
+Starts collecting console logs for a specific tab using Chrome Debugger API.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab to start capturing logs from
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Console capture started",
+  "tabId": 123,
+  "tab_title": "Page Title",
+  "tab_url": "https://example.com",
+  "capture_started": 1234567890
+}
+```
+
+**Features:**
+- Uses Chrome Debugger API for reliable capture
+- Maintains persistent session until stopped
+- Captures all console methods (log, warn, error, info, debug)
+- Handles page navigation (clears logs on navigation)
+- Captures logs with source location and timestamps
 
 #### `get_console_logs`
 
-Retrieves console logs from a tab.
+Retrieves console logs captured since capture was started.
 
 **Parameters:**
 
 - `tabId` (number, required): Tab to get logs from
-- `limit` (number, optional): Maximum logs to return (default: 100)
-- `level` (string, optional): Filter by log level
+- `limit` (number, optional): Maximum logs to return (default: all captured)
+- `level` (string, optional): Filter by log level ('log', 'warn', 'error', 'info', 'debug')
 
 **Response:**
 
@@ -885,20 +915,79 @@ Retrieves console logs from a tab.
 {
   "logs": [
     {
-      "level": "info",
+      "level": "log",
       "message": "Console message",
       "timestamp": 1234567890,
-      "source": "runtime_messaging_primary"
+      "source": "https://example.com/script.js",
+      "line": 42,
+      "column": 10
     }
   ],
-  "source": "runtime_messaging_primary",
-  "tab_title": "Page Title",
+  "source": "active_debugger_session",
+  "tab_title": "Page Title", 
   "tab_url": "https://example.com",
+  "tab_id": 123,
   "timestamp": 1234567890,
-  "total_captured": 1,
-  "method": "runtime_messaging_only"
+  "total_captured": 5,
+  "total_in_session": 15,
+  "capture_duration": 5000,
+  "capture_started": 1234562890
 }
 ```
+
+**Note:** Requires an active console capture session. Use `start_console_capture` first.
+
+#### `clear_console_logs`
+
+Clears captured console logs without stopping the capture session.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab to clear logs for
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Console logs cleared",
+  "tabId": 123,
+  "logs_cleared": 10,
+  "previous_capture_duration": 3000,
+  "new_capture_started": 1234567890
+}
+```
+
+**Use Cases:**
+- Reset logs at specific checkpoints
+- Clear logs before testing specific functionality
+- Manage memory usage for long-running sessions
+
+#### `stop_console_capture`
+
+Stops console log collection and detaches the debugger.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab to stop capturing logs for
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Console capture stopped",
+  "tabId": 123,
+  "logs_captured": 25,
+  "capture_duration": 10000
+}
+```
+
+**Cleanup:**
+- Detaches Chrome debugger from the tab
+- Removes event listeners
+- Clears session data
+- Allows other tools to use the debugger
 
 #### `execute_console`
 

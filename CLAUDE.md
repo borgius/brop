@@ -59,6 +59,11 @@ pnpm run test:bridge     # Test unified bridge (recommended)
 pnpm run test:wikipedia  # Run real-world Wikipedia tests
 pnpm run test:cdp        # Test CDP compatibility
 pnpm run test:brop       # Test BROP protocol
+
+# Console capture testing
+node tests/test-explicit-console-capture.js  # Test explicit console capture workflow
+node tests/test-clear-console-logs.js        # Test clear logs functionality
+node tests/test-console-logs.js              # Legacy console capture test
 ```
 
 ### Extension Management

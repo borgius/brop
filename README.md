@@ -159,8 +159,13 @@ The bridge server supports both BROP and Chrome DevTools Protocol (CDP) methods:
 
 **JavaScript Execution:**
 - `evaluate_js`: Execute JavaScript with full async/await support
-- `get_console_logs`: Retrieve browser console logs
 - `execute_console`: Execute safe console operations
+
+**Console Log Capture:**
+- `start_console_capture`: Start collecting console logs for a tab using Chrome Debugger API
+- `get_console_logs`: Retrieve captured console logs (requires active capture session)
+- `clear_console_logs`: Clear captured logs without stopping the session
+- `stop_console_capture`: Stop log collection and detach debugger
 
 **Extension Management:**
 - `get_extension_version`: Get extension info
@@ -295,6 +300,44 @@ await sendCommand('get_simplified_dom', {
   tabId,
   format: 'markdown',
   includeSelectors: true
+});
+```
+
+### Console Log Capture
+
+Capture and manage browser console logs with explicit control:
+
+```javascript
+// Start capturing console logs
+await sendCommand('start_console_capture', { 
+  tabId 
+});
+
+// Generate some logs
+await sendCommand('evaluate_js', { 
+  tabId,
+  code: `
+    console.log('Application started');
+    console.warn('Warning: Low memory');
+    console.error('Error: Connection failed');
+  `
+});
+
+// Get captured logs
+const logs = await sendCommand('get_console_logs', { 
+  tabId,
+  limit: 50,
+  level: 'error'  // Optional: filter by level
+});
+
+// Clear logs without stopping capture
+await sendCommand('clear_console_logs', { 
+  tabId 
+});
+
+// Stop capturing when done
+await sendCommand('stop_console_capture', { 
+  tabId 
 });
 ```
 
