@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visibility Test</title>
+</head>
+<body>
+    <h1>Visibility Test</h1>
+    <div id="hidden-element" style="display: none; padding: 20px; background: #2196F3; color: white; margin-top: 20px;">
+        Initially hidden - Now visible!
+    </div>
+    <button id="show-element-btn" onclick="showElement()">Show Element</button>
+    
+    <script>
+        function showElement() {
+            document.getElementById('hidden-element').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

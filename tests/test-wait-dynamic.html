@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dynamic Element Test</title>
+</head>
+<body>
+    <h1>Dynamic Element Test</h1>
+    <button id="add-element-btn" onclick="addElementAfterDelay()">Add Element in 2s</button>
+    
+    <script>
+        function addElementAfterDelay() {
+            setTimeout(() => {
+                const div = document.createElement('div');
+                div.id = 'dynamic-element';
+                div.textContent = 'I appeared after 2 seconds!';
+                div.style.padding = '20px';
+                div.style.background = '#4CAF50';
+                div.style.color = 'white';
+                div.style.marginTop = '20px';
+                div.style.borderRadius = '4px';
+                document.body.appendChild(div);
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

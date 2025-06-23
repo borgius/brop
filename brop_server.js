@@ -1244,7 +1244,177 @@ class BROPServer {
 	}
 
 	async handleWaitForElement(params) {
-		throw new Error("WaitForElement method not yet implemented");
+		const { 
+			tabId, 
+			selector, 
+			timeout = 30000,
+			visible = true,
+			pollInterval = 100 
+		} = params;
+
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		if (!selector) {
+			throw new Error("selector is required - CSS selector to identify the element to wait for");
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			throw new Error(`Tab ${tabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		// Execute wait in the tab
+		const results = await chrome.scripting.executeScript({
+			target: { tabId },
+			func: async (selector, options) => {
+				const { timeout, visible, pollInterval } = options;
+				const startTime = Date.now();
+
+				// Helper to check if element meets criteria
+				const checkElement = (element) => {
+					if (!element) return false;
+					
+					if (visible) {
+						const rect = element.getBoundingClientRect();
+						const isVisible = rect.width > 0 && rect.height > 0 && 
+							window.getComputedStyle(element).visibility !== 'hidden' &&
+							window.getComputedStyle(element).display !== 'none';
+						
+						if (!isVisible) return false;
+					}
+					
+					return true;
+				};
+
+				// Try to find element immediately
+				let element = document.querySelector(selector);
+				if (checkElement(element)) {
+					return {
+						success: true,
+						found: true,
+						waitTime: 0,
+						element: {
+							tagName: element.tagName,
+							id: element.id || null,
+							className: element.className || null,
+							textContent: element.textContent?.substring(0, 100) || null,
+							isVisible: true
+						}
+					};
+				}
+
+				// Set up mutation observer to watch for element
+				return new Promise((resolve) => {
+					let resolved = false;
+					
+					// Check periodically
+					const intervalId = setInterval(() => {
+						const element = document.querySelector(selector);
+						if (checkElement(element)) {
+							resolved = true;
+							clearInterval(intervalId);
+							if (observer) observer.disconnect();
+							
+							resolve({
+								success: true,
+								found: true,
+								waitTime: Date.now() - startTime,
+								element: {
+									tagName: element.tagName,
+									id: element.id || null,
+									className: element.className || null,
+									textContent: element.textContent?.substring(0, 100) || null,
+									isVisible: visible
+								}
+							});
+						}
+						
+						// Check timeout
+						if (Date.now() - startTime > timeout) {
+							resolved = true;
+							clearInterval(intervalId);
+							if (observer) observer.disconnect();
+							
+							resolve({
+								success: true,
+								found: false,
+								waitTime: timeout,
+								reason: `Element not found after ${timeout}ms`
+							});
+						}
+					}, pollInterval);
+
+					// Also use MutationObserver for immediate detection
+					const observer = new MutationObserver((mutations) => {
+						if (resolved) return;
+						
+						const element = document.querySelector(selector);
+						if (checkElement(element)) {
+							resolved = true;
+							clearInterval(intervalId);
+							observer.disconnect();
+							
+							resolve({
+								success: true,
+								found: true,
+								waitTime: Date.now() - startTime,
+								element: {
+									tagName: element.tagName,
+									id: element.id || null,
+									className: element.className || null,
+									textContent: element.textContent?.substring(0, 100) || null,
+									isVisible: visible
+								}
+							});
+						}
+					});
+
+					// Start observing
+					observer.observe(document.body, {
+						childList: true,
+						subtree: true,
+						attributes: true,
+						attributeFilter: ['style', 'class', 'hidden']
+					});
+				});
+			},
+			args: [selector, { timeout, visible, pollInterval }]
+		});
+
+		const result = results[0]?.result;
+		if (!result || !result.success) {
+			throw new Error(result?.reason || 'Wait for element operation failed');
+		}
+
+		if (!result.found) {
+			throw new Error(`Element not found: ${selector} (waited ${result.waitTime}ms)`);
+		}
+
+		return {
+			success: true,
+			tabId: tabId,
+			selector: selector,
+			found: result.found,
+			waitTime: result.waitTime,
+			element: result.element
+		};
 	}
 
 	async handleEvaluateJS(params) {

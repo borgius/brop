@@ -581,6 +581,59 @@ Types text into an element with optional human-like behavior.
 - Element is not a text input
 - Tab not accessible (chrome:// URLs)
 
+#### `wait_for_element`
+
+Waits for an element to appear on the page with optional visibility check.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab to wait for element in
+- `selector` (string, required): CSS selector to identify the element
+- `timeout` (number, optional): Maximum wait time in milliseconds (default: 30000)
+- `visible` (boolean, optional): Wait for element to be visible (default: true)
+- `pollInterval` (number, optional): How often to check in milliseconds (default: 100)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "tabId": 123,
+  "selector": "#dynamic-content",
+  "found": true,
+  "waitTime": 1523,
+  "element": {
+    "tagName": "DIV",
+    "id": "dynamic-content",
+    "className": "content-loaded",
+    "textContent": "Dynamic content has loaded...",
+    "isVisible": true
+  }
+}
+```
+
+**Features:**
+
+- Immediate check if element already exists
+- Dual detection: polling + MutationObserver
+- Optional visibility validation
+- Returns wait time for performance monitoring
+- Configurable timeout and poll interval
+- Works with dynamically loaded content
+
+**Error Cases:**
+
+- Element not found within timeout
+- Tab not accessible (chrome:// URLs)
+- Invalid selector syntax
+
+**Use Cases:**
+
+- Waiting for AJAX content to load
+- Waiting for animations to complete
+- Ensuring element is visible before interaction
+- Synchronizing with dynamic page updates
+
 ### Console Operations
 
 #### `get_console_logs`
