@@ -519,6 +519,68 @@ Clicks on an element identified by a CSS selector.
 - Element is disabled
 - Tab not accessible (chrome:// URLs)
 
+#### `type`
+
+Types text into an element with optional human-like behavior.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab containing the element
+- `selector` (string, required): CSS selector to identify the input element
+- `text` (string, required): Text to type
+- `delay` (number, optional): Base delay between keystrokes in ms (default: 100ms for humanLike, 50ms for regular)
+- `humanLike` (boolean, optional): Enable human-like typing with variations (default: false)
+- `clear` (boolean, optional): Clear existing content before typing (default: false)
+- `pressEnter` (boolean, optional): Press Enter key after typing (default: false)
+- `typoChance` (number, optional): Chance of making typos when humanLike=true (default: 0.02)
+- `timeout` (number, optional): Timeout for finding element in milliseconds (default: 5000)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "tabId": 123,
+  "selector": "#username",
+  "typed": "john.doe@example.com",
+  "finalValue": "john.doe@example.com",
+  "element": {
+    "tagName": "INPUT",
+    "id": "username",
+    "className": "form-input",
+    "name": "username",
+    "type": "email",
+    "placeholder": "Enter your email"
+  },
+  "corrections": 2,
+  "humanLike": true
+}
+```
+
+**Features:**
+
+- Character-by-character typing with keyboard events
+- Human-like typing mode with:
+  - Realistic typing speed using normal distribution (average ~100ms per character)
+  - Variable delays between keystrokes (40-250ms range)
+  - Occasional thinking pauses (5% chance of 200-500ms pause)
+  - Word boundary pauses (15% chance of 50-150ms pause)
+  - Occasional typos (adjacent keys, double characters, skipped characters)
+  - Automatic typo correction with backspace
+- Full keyboard event simulation (keydown, keypress, keyup, input, change)
+- Works with input, textarea, and contentEditable elements
+- Option to clear existing content
+- Option to press Enter (triggers form submit if in a form)
+- Validates element visibility and enabled state
+
+**Error Cases:**
+
+- Element not found within timeout
+- Element is not visible
+- Element is disabled or read-only
+- Element is not a text input
+- Tab not accessible (chrome:// URLs)
+
 ### Console Operations
 
 #### `get_console_logs`

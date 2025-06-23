@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Typing Speed Comparison Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #333;
+        }
+        .input-group {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+            display: block;
+            margin-bottom: 8px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        .info-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f4f8;
+            border-radius: 8px;
+            border-left: 4px solid #2196F3;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #1976D2;
+        }
+        .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .info-box li {
+            margin: 5px 0;
+            color: #555;
+        }
+        .status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="status">Demo Active</div>
+    
+    <h1>🎭 Typing Speed Comparison</h1>
+    
+    <div class="input-group">
+        <label>1. Robot Mode (50ms fixed):</label>
+        <input id="robot" type="text" placeholder="Fast, consistent robot typing...">
+    </div>
+    
+    <div class="input-group">
+        <label>2. Human Mode - Default (100ms average):</label>
+        <input id="human-default" type="text" placeholder="Natural human typing speed...">
+    </div>
+    
+    <div class="input-group">
+        <label>3. Human Mode - Fast Typist (70ms average):</label>
+        <input id="human-fast" type="text" placeholder="Fast human typing...">
+    </div>
+    
+    <div class="input-group">
+        <label>4. Human Mode - Careful (150ms average):</label>
+        <input id="human-slow" type="text" placeholder="Slow, careful typing...">
+    </div>
+    
+    <div class="info-box">
+        <h3>What makes it realistic:</h3>
+        <ul>
+            <li>Normal distribution of delays (not uniform)</li>
+            <li>Occasional thinking pauses (200-500ms)</li>
+            <li>Word boundary pauses (50-150ms)</li>
+            <li>Natural typos with corrections</li>
+            <li>Variable speed throughout typing</li>
+        </ul>
+    </div>
+</body>
+</html>

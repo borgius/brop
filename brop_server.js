@@ -721,10 +721,10 @@ class BROPServer {
 				return (async () => {
 					try {
 						const element = await waitForElement(selector, timeout);
-						
+
 						// Check if element is visible and clickable
 						const rect = element.getBoundingClientRect();
-						const isVisible = rect.width > 0 && rect.height > 0 && 
+						const isVisible = rect.width > 0 && rect.height > 0 &&
 							window.getComputedStyle(element).visibility !== 'hidden' &&
 							window.getComputedStyle(element).display !== 'none';
 
@@ -768,7 +768,7 @@ class BROPServer {
 						}));
 
 						// For links and buttons, also try native click
-						if (element.tagName === 'A' || element.tagName === 'BUTTON' || 
+						if (element.tagName === 'A' || element.tagName === 'BUTTON' ||
 							element.tagName === 'INPUT' || element.role === 'button') {
 							element.click();
 						}
@@ -809,7 +809,7 @@ class BROPServer {
 		// If waitForNavigation is true, wait a bit for potential navigation
 		if (waitForNavigation) {
 			await new Promise(resolve => setTimeout(resolve, 1000));
-			
+
 			// Get updated tab info
 			const updatedTab = await chrome.tabs.get(tabId);
 			result.navigation = {
@@ -830,7 +830,417 @@ class BROPServer {
 	}
 
 	async handleType(params) {
-		throw new Error("Type method not yet implemented");
+		const {
+			tabId,
+			selector,
+			text,
+			delay = null, // Will be set based on humanLike
+			humanLike = false,
+			clear = false,
+			pressEnter = false,
+			typoChance = 0.02,
+			timeout = 5000
+		} = params;
+
+		// Set realistic default delays
+		const defaultDelay = humanLike ? 100 : 50; // Humans type ~100-150ms per char on average
+		const actualDelay = delay !== null ? delay : defaultDelay;
+
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		if (!selector) {
+			throw new Error("selector is required - CSS selector to identify the element to type into");
+		}
+
+		if (typeof text !== 'string') {
+			throw new Error("text is required and must be a string");
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			throw new Error(`Tab ${tabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		// Execute typing in the tab
+		const results = await chrome.scripting.executeScript({
+			target: { tabId },
+			func: async (selector, text, options) => {
+				const { delay, humanLike, clear, pressEnter, typoChance, timeout } = options;
+
+				// Helper to wait for element
+				const waitForElement = (selector, timeout) => {
+					return new Promise((resolve, reject) => {
+						const element = document.querySelector(selector);
+						if (element) {
+							resolve(element);
+							return;
+						}
+
+						const observer = new MutationObserver((mutations, obs) => {
+							const element = document.querySelector(selector);
+							if (element) {
+								obs.disconnect();
+								resolve(element);
+							}
+						});
+
+						observer.observe(document.body, {
+							childList: true,
+							subtree: true
+						});
+
+						setTimeout(() => {
+							observer.disconnect();
+							reject(new Error(`Element not found: ${selector}`));
+						}, timeout);
+					});
+				};
+
+				// Helper to generate random delay
+				const getRandomDelay = (baseDelay) => {
+					if (!humanLike) return baseDelay;
+
+					// Human typing speed varies:
+					// - Average typist: 80-120ms per character
+					// - Fast typist: 50-80ms per character
+					// - Slow/careful: 120-200ms per character
+					// We'll use a normal distribution centered around baseDelay
+
+					// Simple approximation of normal distribution using Box-Muller
+					const u1 = Math.random();
+					const u2 = Math.random();
+					const normal = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+
+					// Standard deviation is ~20% of base delay
+					const stdDev = baseDelay * 0.2;
+					const delay = Math.round(baseDelay + normal * stdDev);
+
+					// Clamp to reasonable bounds
+					// Minimum: 40ms (very fast typing)
+					// Maximum: 250ms (thoughtful/careful typing)
+					return Math.max(40, Math.min(250, delay));
+				};
+
+				// Helper to introduce typos
+				const shouldMakeTypo = () => humanLike && Math.random() < typoChance;
+
+				// Common typo patterns
+				const makeTypo = (char, index, text) => {
+					const typoTypes = ['adjacent', 'double', 'skip'];
+					const typoType = typoTypes[Math.floor(Math.random() * typoTypes.length)];
+
+					switch (typoType) {
+						case 'adjacent': {
+							// Type adjacent key on keyboard
+							const adjacentKeys = {
+								'a': ['s', 'q', 'w'],
+								'b': ['v', 'n', 'g', 'h'],
+								'c': ['x', 'v', 'd', 'f'],
+								'd': ['s', 'f', 'e', 'r', 'c', 'x'],
+								'e': ['w', 'r', 'd', 's'],
+								'f': ['d', 'g', 'r', 't', 'c', 'v'],
+								'g': ['f', 'h', 't', 'y', 'b', 'v'],
+								'h': ['g', 'j', 'y', 'u', 'n', 'b'],
+								'i': ['u', 'o', 'k', 'j'],
+								'j': ['h', 'k', 'u', 'i', 'm', 'n'],
+								'k': ['j', 'l', 'i', 'o', 'm'],
+								'l': ['k', 'o', 'p'],
+								'm': ['n', 'j', 'k'],
+								'n': ['b', 'm', 'h', 'j'],
+								'o': ['i', 'p', 'l', 'k'],
+								'p': ['o', 'l'],
+								'q': ['w', 'a'],
+								'r': ['e', 't', 'f', 'd'],
+								's': ['a', 'd', 'w', 'e', 'z', 'x'],
+								't': ['r', 'y', 'g', 'f'],
+								'u': ['y', 'i', 'j', 'h'],
+								'v': ['c', 'b', 'f', 'g'],
+								'w': ['q', 'e', 'a', 's'],
+								'x': ['z', 'c', 's', 'd'],
+								'y': ['t', 'u', 'h', 'g'],
+								'z': ['x', 's', 'a']
+							};
+							const lowerChar = char.toLowerCase();
+							if (adjacentKeys[lowerChar]) {
+								const typoChar = adjacentKeys[lowerChar][Math.floor(Math.random() * adjacentKeys[lowerChar].length)];
+								return char === lowerChar ? typoChar : typoChar.toUpperCase();
+							}
+							return char;
+						}
+
+						case 'double':
+							// Type character twice
+							return char + char;
+
+						case 'skip':
+							// Skip character (will be corrected)
+							return '';
+
+						default:
+							return char;
+					}
+				};
+
+				// Helper to simulate keyboard event
+				const simulateKeyEvent = (element, eventType, key) => {
+					const event = new KeyboardEvent(eventType, {
+						key: key,
+						code: `Key${key.toUpperCase()}`,
+						keyCode: key.charCodeAt(0),
+						which: key.charCodeAt(0),
+						bubbles: true,
+						cancelable: true
+					});
+					element.dispatchEvent(event);
+				};
+
+				// Helper to wait
+				const wait = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+				try {
+					// Find and focus element
+					const element = await waitForElement(selector, timeout);
+
+					// Check if element is visible and enabled
+					const rect = element.getBoundingClientRect();
+					const isVisible = rect.width > 0 && rect.height > 0 &&
+						window.getComputedStyle(element).visibility !== 'hidden' &&
+						window.getComputedStyle(element).display !== 'none';
+
+					if (!isVisible) {
+						throw new Error(`Element is not visible: ${selector}`);
+					}
+
+					if (element.disabled || element.readOnly) {
+						throw new Error(`Element is disabled or read-only: ${selector}`);
+					}
+
+					// Check if it's an input element
+					const isInput = ['INPUT', 'TEXTAREA'].includes(element.tagName) ||
+						element.contentEditable === 'true';
+
+					if (!isInput) {
+						throw new Error(`Element is not a text input: ${selector}`);
+					}
+
+					// Focus the element
+					element.focus();
+					simulateKeyEvent(element, 'focusin', '');
+
+					// Clear existing content if requested
+					if (clear) {
+						element.select ? element.select() : null;
+						element.value = '';
+						element.textContent = '';
+						simulateKeyEvent(element, 'input', '');
+						element.dispatchEvent(new Event('change', { bubbles: true }));
+						await wait(delay);
+					}
+
+					// Type text character by character
+					let typedText = '';
+					const corrections = [];
+
+					for (let i = 0; i < text.length; i++) {
+						const char = text[i];
+						let charToType = char;
+						let madeTypo = false;
+
+						// Potentially make a typo
+						if (shouldMakeTypo() && i > 0 && i < text.length - 1) {
+							charToType = makeTypo(char, i, text);
+							if (charToType !== char) {
+								madeTypo = true;
+								corrections.push({
+									position: typedText.length + charToType.length,
+									correct: char,
+									typo: charToType
+								});
+							}
+						}
+
+						// Type the character(s)
+						for (const c of charToType) {
+							simulateKeyEvent(element, 'keydown', c);
+							simulateKeyEvent(element, 'keypress', c);
+
+							if (element.value !== undefined) {
+								element.value += c;
+							} else {
+								element.textContent += c;
+							}
+							typedText += c;
+
+							simulateKeyEvent(element, 'keyup', c);
+							simulateKeyEvent(element, 'input', c);
+
+							// Random delay between characters
+							if (humanLike || delay > 0) {
+								let charDelay = getRandomDelay(delay);
+
+								// Occasionally add "thinking pauses" in human mode
+								if (humanLike) {
+									// 5% chance of a longer pause (thinking/hesitation)
+									if (Math.random() < 0.05) {
+										charDelay += Math.floor(Math.random() * 300) + 200; // Add 200-500ms
+									}
+									// 15% chance of a short pause (word boundaries)
+									else if (Math.random() < 0.15) {
+										charDelay += Math.floor(Math.random() * 100) + 50; // Add 50-150ms
+									}
+								}
+
+								await wait(charDelay);
+							}
+						}
+
+						// If we made a typo and it was a skip, we need to add the character
+						if (madeTypo && charToType === '') {
+							// Simulate realizing the mistake after a brief pause
+							if (humanLike) {
+								await wait(getRandomDelay(delay * 3));
+							}
+
+							// Type the correct character
+							simulateKeyEvent(element, 'keydown', char);
+							simulateKeyEvent(element, 'keypress', char);
+
+							if (element.value !== undefined) {
+								element.value += char;
+							} else {
+								element.textContent += char;
+							}
+							typedText += char;
+
+							simulateKeyEvent(element, 'keyup', char);
+							simulateKeyEvent(element, 'input', char);
+						}
+					}
+
+					// Correct typos if we made any (human-like behavior)
+					if (humanLike && corrections.length > 0) {
+						for (const correction of corrections.reverse()) {
+							// Pause before correcting (simulating realization)
+							await wait(getRandomDelay(delay * 5));
+
+							// Move cursor to position (simplified - just backspace)
+							const charsToDelete = typedText.length - correction.position + correction.typo.length;
+
+							for (let i = 0; i < charsToDelete; i++) {
+								simulateKeyEvent(element, 'keydown', 'Backspace');
+								if (element.value !== undefined) {
+									element.value = element.value.slice(0, -1);
+								} else {
+									element.textContent = element.textContent.slice(0, -1);
+								}
+								simulateKeyEvent(element, 'keyup', 'Backspace');
+								simulateKeyEvent(element, 'input', 'Backspace');
+
+								if (humanLike) {
+									await wait(getRandomDelay(delay * 0.5));
+								}
+							}
+
+							// Retype the correct text
+							const reTypeText = text.substring(correction.position - correction.typo.length);
+							for (const c of reTypeText) {
+								simulateKeyEvent(element, 'keydown', c);
+								simulateKeyEvent(element, 'keypress', c);
+
+								if (element.value !== undefined) {
+									element.value += c;
+								} else {
+									element.textContent += c;
+								}
+
+								simulateKeyEvent(element, 'keyup', c);
+								simulateKeyEvent(element, 'input', c);
+
+								if (humanLike) {
+									await wait(getRandomDelay(delay));
+								}
+							}
+						}
+					}
+
+					// Trigger change event
+					element.dispatchEvent(new Event('change', { bubbles: true }));
+
+					// Press Enter if requested
+					if (pressEnter) {
+						await wait(delay);
+						simulateKeyEvent(element, 'keydown', 'Enter');
+						simulateKeyEvent(element, 'keypress', 'Enter');
+						simulateKeyEvent(element, 'keyup', 'Enter');
+
+						// For forms, might trigger submit
+						const form = element.closest('form');
+						if (form) {
+							const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+							form.dispatchEvent(submitEvent);
+						}
+					}
+
+					// Get final value
+					const finalValue = element.value || element.textContent;
+
+					return {
+						success: true,
+						element: {
+							tagName: element.tagName,
+							id: element.id || null,
+							className: element.className || null,
+							name: element.name || null,
+							type: element.type || null,
+							placeholder: element.placeholder || null
+						},
+						typed: text,
+						finalValue: finalValue,
+						corrections: corrections.length,
+						humanLike: humanLike
+					};
+				} catch (error) {
+					return {
+						success: false,
+						error: error.message
+					};
+				}
+			},
+			args: [selector, text, { delay: actualDelay, humanLike, clear, pressEnter, typoChance, timeout }]
+		});
+
+		const result = results[0]?.result;
+		if (!result || !result.success) {
+			throw new Error(result?.error || 'Type operation failed');
+		}
+
+		return {
+			success: true,
+			tabId: tabId,
+			selector: selector,
+			typed: result.typed,
+			finalValue: result.finalValue,
+			element: result.element,
+			corrections: result.corrections,
+			humanLike: result.humanLike
+		};
 	}
 
 	async handleWaitForElement(params) {
