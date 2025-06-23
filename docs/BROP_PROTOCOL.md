@@ -636,7 +636,7 @@ Waits for an element to appear on the page with optional visibility check.
 
 #### `evaluate_js`
 
-Executes JavaScript code in the context of a web page.
+Executes JavaScript code in the context of a web page using the Chrome Debugger API. Provides full JavaScript execution capabilities with support for complex operations, async functions, and DOM manipulation.
 
 **Parameters:**
 
@@ -664,50 +664,208 @@ Executes JavaScript code in the context of a web page.
 }
 ```
 
+**Implementation Details:**
+
+- Uses Chrome Debugger API (`Runtime.evaluate`) for execution
+- Automatically wraps code with return statements in IIFE
+- Invokes function definitions when no arguments provided
+- Handles async/await with proper promise resolution
+- Works best with HTTP/HTTPS URLs (limited functionality with file:// URLs)
+
 **Code Format Examples:**
 
 ```javascript
-// Simple expression
-"document.title"
+// 1. Simple expressions
+"document.title"                          // Returns: "Page Title"
+"window.location.href"                    // Returns: "https://example.com"
+"1 + 2 * 3"                              // Returns: 7
 
-// Multiple statements with return
+// 2. DOM queries
+"document.querySelectorAll('a').length"   // Returns: 5
+"document.getElementById('submit').value" // Returns: "Click Me"
+
+// 3. Multiple statements with return
 "const links = document.querySelectorAll('a'); return links.length"
+"const x = 10; const y = 20; return x + y;"
 
-// Function expression
+// 4. Object creation
+"({ name: 'test', value: 123, active: true })"
+"[1, 2, 3, 4, 5].map(x => x * 2)"
+
+// 5. Function definitions (auto-invoked if no args)
+"function getData() { return document.title; }"
 "() => document.querySelectorAll('input').length"
 
-// Async function
-"async () => { await new Promise(r => setTimeout(r, 1000)); return 'done'; }"
+// 6. Functions with arguments
+"(a, b) => a + b"                        // Use with args: [10, 25]
+"(name, age) => ({ name, age })"        // Use with args: ["John", 30]
 
-// With arguments
-"(x, y) => x + y"  // Use with args: [5, 3]
+// 7. Async functions
+"async () => { 
+  await new Promise(r => setTimeout(r, 1000)); 
+  return 'waited 1 second'; 
+}"
+
+// 8. Complex async operations
+"async () => {
+  const response = await fetch('/api/data');
+  const data = await response.json();
+  return data.items.length;
+}"
 ```
 
-**Features:**
+**Real-World Examples:**
 
-- Flexible code input (expressions, statements, functions)
-- Automatic function wrapping for expressions
-- Promise handling with timeout
-- Argument passing support
-- Serialization of return values
-- Error stack traces
-- Works with async/await
+```javascript
+// Extract all links from a page
+const result = await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: `
+    Array.from(document.querySelectorAll('a'))
+      .map(link => ({
+        text: link.textContent.trim(),
+        href: link.href,
+        target: link.target
+      }))
+      .filter(link => link.href.startsWith('http'))
+  `
+});
+
+// Fill and submit a form
+await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: `
+    document.getElementById('username').value = 'john.doe';
+    document.getElementById('password').value = 'secret123';
+    document.getElementById('login-form').submit();
+    return 'Form submitted';
+  `
+});
+
+// Wait for element and extract data
+await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: `
+    async () => {
+      // Wait for dynamic content
+      while (!document.querySelector('.results-loaded')) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      
+      // Extract data
+      return Array.from(document.querySelectorAll('.result-item'))
+        .map(item => ({
+          title: item.querySelector('h3').textContent,
+          price: item.querySelector('.price').textContent,
+          url: item.querySelector('a').href
+        }));
+    }
+  `
+});
+
+// Interact with page and capture result
+await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: `
+    // Click button
+    document.getElementById('load-more').click();
+    
+    // Wait for new content
+    await new Promise(r => setTimeout(r, 1000));
+    
+    // Count new items
+    return document.querySelectorAll('.item').length;
+  `
+});
+
+// Custom function with parameters
+const sum = await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: '(numbers) => numbers.reduce((a, b) => a + b, 0)',
+  args: [[1, 2, 3, 4, 5]]
+});
+// Returns: 15
+```
+
+**Advanced Features:**
+
+1. **Return by Reference** (returnByValue: false):
+```javascript
+// Get object reference instead of serialized value
+const result = await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: 'document',
+  returnByValue: false
+});
+// Returns: { type: "object", className: "HTMLDocument", description: "#document" }
+```
+
+2. **Timeout Control**:
+```javascript
+// Set custom timeout for long operations
+await sendCommand('evaluate_js', {
+  tabId: tab.tabId,
+  code: 'async () => { /* long running code */ }',
+  timeout: 60000  // 60 seconds
+});
+```
+
+3. **Error Handling**:
+```javascript
+try {
+  await sendCommand('evaluate_js', {
+    tabId: tab.tabId,
+    code: 'nonExistentFunction()'
+  });
+} catch (error) {
+  // Error: JavaScript execution failed: Uncaught ReferenceError
+}
+```
+
+**Limitations:**
+
+1. **file:// URLs**: Limited functionality due to Chrome security restrictions
+   - Most operations work, but some fail (e.g., accessing window object)
+   - Recommendation: Use HTTP/HTTPS URLs for full functionality
+
+2. **Non-serializable Objects**: Objects with circular references cannot be returned with `returnByValue: true`
+   - Examples: `window`, `document` (when returnByValue is true)
+   - Solution: Use `returnByValue: false` for references
+
+3. **Chrome Security**: First use requires accepting Chrome's debugger warning
+   - Chrome shows: "Extension is debugging this tab"
+   - User must allow for functionality to work
+
+4. **CSP Restrictions**: Some pages with strict Content Security Policy may block execution
+   - Workaround: Use simpler commands like `get_page_content`
 
 **Error Cases:**
 
-- Syntax errors in JavaScript code
-- Execution timeout
-- Non-serializable objects (when returnByValue=true)
-- Runtime errors in executed code
-- Tab not accessible (chrome:// URLs)
+- Syntax errors: `"this is not valid javascript"`
+- Reference errors: `"nonExistentVariable"`
+- Type errors: `"null.property"`
+- Timeout errors: Infinite loops or long operations
+- Serialization errors: Circular references
+- Permission errors: chrome:// URLs
+
+**Best Practices:**
+
+1. **Always handle errors**: Wrap calls in try-catch blocks
+2. **Use appropriate timeouts**: Set longer timeouts for complex operations
+3. **Test with HTTP URLs**: Develop and test with HTTP/HTTPS URLs
+4. **Check element existence**: Verify elements exist before interaction
+5. **Use async for waiting**: Leverage async/await for timing-dependent operations
 
 **Use Cases:**
 
-- DOM manipulation and queries
-- Data extraction from pages
-- Testing and automation
-- Injecting utilities
-- Page state inspection
+- **Web Scraping**: Extract structured data from dynamic pages
+- **Form Automation**: Fill and submit forms programmatically
+- **Testing**: Verify page behavior and content
+- **Page Monitoring**: Check for changes or specific conditions
+- **Data Collection**: Gather analytics or metrics
+- **UI Automation**: Click buttons, navigate, interact with elements
+- **Content Injection**: Add custom functionality to pages
+- **State Inspection**: Debug and analyze page state
 
 ### Console Operations
 

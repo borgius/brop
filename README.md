@@ -8,8 +8,8 @@ A Chrome extension that provides native browser automation capabilities through 
 - **🔧 MCP Server**: Model Context Protocol interface for AI agents and tools (dual-mode: server/relay)
 - **🧩 Chrome Extension**: Native Chrome extension for direct browser control and automation
 - **📝 Content Extraction**: Advanced content extraction with Mozilla Readability and semantic markdown
-- **⚙️ JavaScript Execution**: Execute code in page context and capture console logs
-- **🎯 DOM Operations**: Simplified DOM extraction and element interaction
+- **⚙️ JavaScript Execution**: Full JavaScript execution using Chrome Debugger API with async/await support
+- **🎯 DOM Operations**: Simplified DOM extraction and element interaction (click, type, wait)
 - **📸 Screenshot Capture**: Take screenshots of browser tabs
 - **🧭 Navigation Control**: Navigate pages with status monitoring
 - **🔍 Debug Toolkit**: Comprehensive debugging and monitoring tools
@@ -138,17 +138,35 @@ The bridge server supports both BROP and Chrome DevTools Protocol (CDP) methods:
 
 #### BROP Commands (Port 9225)
 
-- `navigate_to_url`: Navigate to a specific URL
-- `get_page_content`: Extract page content and metadata
-- `get_simplified_dom`: Get simplified DOM structure (HTML/Markdown via Readability)
-- `get_console_logs`: Retrieve browser console logs
+**Tab Management:**
 - `create_tab`: Create new browser tab
 - `close_tab`: Close specific tab
 - `list_tabs`: List all open tabs
 - `activate_tab`: Switch to specific tab
-- `click_element`: Click element by CSS selector
-- `type_text`: Type text into input fields
+
+**Navigation & Content:**
+- `navigate`: Navigate to URL with options
+- `get_page_content`: Extract page content and metadata
+- `get_simplified_dom`: Get simplified DOM structure (HTML/Markdown via Readability)
+- `get_element`: Find and get element details by CSS selector
 - `get_screenshot`: Capture page screenshot
+
+**Interaction:**
+- `click`: Click element with visibility checks and navigation detection
+- `type`: Type text with human-like typing simulation
+- `wait_for_element`: Wait for element to appear with MutationObserver
+- `fill_form`: Fill entire forms with field detection
+
+**JavaScript Execution:**
+- `evaluate_js`: Execute JavaScript with full async/await support
+- `get_console_logs`: Retrieve browser console logs
+- `execute_console`: Execute safe console operations
+
+**Extension Management:**
+- `get_extension_version`: Get extension info
+- `get_extension_errors`: View extension errors
+- `clear_extension_errors`: Clear error logs
+- `reload_extension`: Reload the extension
 
 #### CDP Commands (Port 9222)
 
@@ -205,6 +223,80 @@ All responses follow CDP format:
 6. **Popup** (`popup.html/js`): Extension UI showing service status and debugging tools
 7. **Content Extractor** (`content-extractor.js`): Advanced content extraction with Readability and semantic markdown
 8. **DOM Simplifier** (`dom_simplifier.js`): Utility for extracting simplified DOM structures
+
+## Key Capabilities
+
+### JavaScript Execution (`evaluate_js`)
+
+Execute arbitrary JavaScript in page context with full async/await support:
+
+```javascript
+// Simple expression
+await sendCommand('evaluate_js', { 
+  tabId, 
+  code: 'document.title' 
+});
+
+// Extract structured data
+await sendCommand('evaluate_js', { 
+  tabId, 
+  code: `
+    Array.from(document.querySelectorAll('.product'))
+      .map(p => ({
+        name: p.querySelector('h3').textContent,
+        price: p.querySelector('.price').textContent
+      }))
+  ` 
+});
+
+// Async operations
+await sendCommand('evaluate_js', { 
+  tabId, 
+  code: `
+    async () => {
+      await new Promise(r => setTimeout(r, 1000));
+      return document.querySelector('.dynamic-content').textContent;
+    }
+  ` 
+});
+```
+
+See [evaluate_js Guide](docs/EVALUATE_JS_GUIDE.md) for comprehensive documentation.
+
+### Human-like Interaction
+
+Simulate realistic user behavior with typing and clicking:
+
+```javascript
+// Type with human-like delays and occasional typos
+await sendCommand('type', { 
+  tabId, 
+  selector: '#search',
+  text: 'hello world',
+  humanLike: true,
+  delay: 100
+});
+
+// Click with visibility checks
+await sendCommand('click', { 
+  tabId, 
+  selector: '#submit',
+  waitForNavigation: true
+});
+```
+
+### Advanced Content Extraction
+
+Extract clean, semantic content from any webpage:
+
+```javascript
+// Get Markdown with CSS selectors for automation
+await sendCommand('get_simplified_dom', { 
+  tabId,
+  format: 'markdown',
+  includeSelectors: true
+});
+```
 
 ## Development
 
@@ -276,6 +368,13 @@ pnpm run test:complete   # Complete flow test
 pnpm run test:reload     # Test extension reload mechanism
 ```
 
+## Documentation
+
+- [BROP Protocol Reference](docs/BROP_PROTOCOL.md) - Complete protocol documentation
+- [evaluate_js Guide](docs/EVALUATE_JS_GUIDE.md) - Comprehensive JavaScript execution guide
+- [Architecture Overview](ARCHITECTURE.md) - System design and components
+- [Markdown Format Guide](docs/MARKDOWN_FORMAT_GUIDE.md) - CSS selector extraction format
+
 ## Limitations
 
 - Chrome extension permissions and security model
@@ -283,6 +382,7 @@ pnpm run test:reload     # Test extension reload mechanism
 - Extension API overhead compared to direct browser control
 - Cannot access chrome:// internal pages (security restriction)
 - Requires bridge server to be running for external connections
+- JavaScript execution on file:// URLs has some restrictions
 
 ## Security Notes
 
