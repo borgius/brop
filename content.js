@@ -2,6 +2,9 @@
 // This script runs in the context of web pages and provides the interface
 // for executing commands that require page-level access
 
+// Check if already injected to avoid duplicate injection errors
+if (typeof window.BROP === 'undefined') {
+
 class BROPContentScript {
 	constructor() {
 		this.setupMessageListener();
@@ -1170,3 +1173,5 @@ const bropContent = new BROPContentScript();
 
 // Make it available globally for debugging
 window.BROP = bropContent;
+
+} // End of if (typeof window.BROP === 'undefined')

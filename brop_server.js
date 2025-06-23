@@ -34,6 +34,9 @@ class BROPServer {
 		this.messageHandlers.set("get_server_status", this.handleGetServerStatus.bind(this));
 
 		// Page console access
+		this.messageHandlers.set("start_console_capture", this.handleStartConsoleCapture.bind(this));
+		this.messageHandlers.set("stop_console_capture", this.handleStopConsoleCapture.bind(this));
+		this.messageHandlers.set("clear_console_logs", this.handleClearConsoleLogs.bind(this));
 		this.messageHandlers.set("get_console_logs", this.handleGetConsoleLogs.bind(this));
 		this.messageHandlers.set("execute_console", this.handleExecuteConsole.bind(this));
 
@@ -246,17 +249,17 @@ class BROPServer {
 	}
 
 	// BROP Method Implementations
-	async handleGetConsoleLogs(params) {
+	async handleStartConsoleCapture(params) {
 		const { tabId } = params;
-		let targetTab;
-
+		
 		if (!tabId) {
 			throw new Error(
-				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one."
 			);
 		}
 
 		// Get the specified tab
+		let targetTab;
 		try {
 			targetTab = await chrome.tabs.get(tabId);
 		} catch (error) {
@@ -269,34 +272,335 @@ class BROPServer {
 			targetTab.url.startsWith("chrome-extension://")
 		) {
 			throw new Error(
-				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`
 			);
 		}
 
 		console.log(
-			`🔧 DEBUG handleGetConsoleLogs: Using tab ${targetTab.id} - "${targetTab.title}" - ${targetTab.url}`,
+			`🔧 Starting console capture for tab ${targetTab.id} - "${targetTab.title}"`
 		);
 
-		// Use runtime messaging approach (your suggested method) as the primary and only method
-		const logs = await this.getRuntimeConsoleLogs(
-			targetTab.id,
-			params.limit || 100,
-		);
-
-		// Filter by level if specified
-		let filteredLogs = logs;
-		if (params.level) {
-			filteredLogs = logs.filter((log) => log.level === params.level);
+		// Check if we already have a session for this tab
+		let session = this.debuggerSessions.get(tabId);
+		
+		if (session && session.attached) {
+			// Clear existing logs to start fresh
+			session.consoleLogs = [];
+			session.captureStartTime = Date.now();
+			console.log(`🔧 Cleared existing logs for tab ${tabId}, starting fresh capture`);
+			
+			return {
+				success: true,
+				message: "Console capture restarted",
+				tabId: tabId,
+				tab_title: targetTab.title,
+				tab_url: targetTab.url,
+				capture_started: session.captureStartTime
+			};
 		}
 
+		try {
+			// Check if debugger is already attached
+			const targets = await chrome.debugger.getTargets();
+			const target = targets.find(t => t.tabId === tabId);
+			
+			if (target && target.attached) {
+				throw new Error("Debugger already attached by another process");
+			}
+
+			// Attach debugger to the tab
+			await chrome.debugger.attach({ tabId: tabId }, "1.3");
+			console.log(`🔧 Debugger attached to tab ${tabId}`);
+			
+			// Enable Runtime domain to receive console messages
+			await chrome.debugger.sendCommand({ tabId: tabId }, "Runtime.enable", {});
+			
+			// Enable Log domain for additional console capture
+			await chrome.debugger.sendCommand({ tabId: tabId }, "Log.enable", {});
+			
+			// Enable Page domain to track navigation
+			await chrome.debugger.sendCommand({ tabId: tabId }, "Page.enable", {});
+			
+			console.log(`🔧 Runtime, Log, and Page domains enabled`);
+			
+			// Create session
+			session = {
+				tabId: tabId,
+				attached: true,
+				consoleLogs: [],
+				captureStartTime: Date.now(),
+				eventListener: null
+			};
+			
+			// Set up persistent event listener for this session
+			session.eventListener = (source, method, params) => {
+				if (source.tabId !== tabId) return;
+				
+				// Handle console API calls
+				if (method === "Runtime.consoleAPICalled") {
+					const logEntry = {
+						level: params.type,
+						message: params.args.map(arg => {
+							if (arg.type === 'string') return arg.value;
+							if (arg.type === 'number') return String(arg.value);
+							if (arg.type === 'boolean') return String(arg.value);
+							if (arg.type === 'object' && arg.preview) {
+								return arg.preview.description || arg.description || '[Object]';
+							}
+							if (arg.type === 'undefined') return 'undefined';
+							if (arg.type === 'function') return '[Function]';
+							return arg.description || String(arg.value || '[Unknown]');
+						}).join(' '),
+						timestamp: params.timestamp || Date.now(),
+						source: params.stackTrace?.callFrames?.[0]?.url || 'console',
+						line: params.stackTrace?.callFrames?.[0]?.lineNumber || 0,
+						column: params.stackTrace?.callFrames?.[0]?.columnNumber || 0
+					};
+					
+					session.consoleLogs.push(logEntry);
+					console.log(`🔧 Captured console.${logEntry.level}: ${logEntry.message.substring(0, 100)}...`);
+					
+					// Keep only recent logs
+					if (session.consoleLogs.length > 1000) {
+						session.consoleLogs = session.consoleLogs.slice(-1000);
+					}
+				}
+				
+				// Also handle Log domain entries
+				if (method === "Log.entryAdded") {
+					const entry = params.entry;
+					const logEntry = {
+						level: entry.level,
+						message: entry.text,
+						timestamp: entry.timestamp || Date.now(),
+						source: entry.source || 'log',
+						line: entry.lineNumber || 0,
+						column: 0
+					};
+					
+					session.consoleLogs.push(logEntry);
+					console.log(`🔧 Captured log entry: ${logEntry.message.substring(0, 100)}...`);
+					
+					// Keep only recent logs
+					if (session.consoleLogs.length > 1000) {
+						session.consoleLogs = session.consoleLogs.slice(-1000);
+					}
+				}
+				
+				// Handle page navigation (clears console)
+				if (method === "Page.navigatedWithinDocument" || method === "Page.frameNavigated") {
+					if (params.frame && params.frame.parentId === undefined) {
+						console.log(`🔧 Page navigated, clearing console logs for tab ${tabId}`);
+						session.consoleLogs = [];
+					}
+				}
+			};
+			
+			// Register the event listener
+			chrome.debugger.onEvent.addListener(session.eventListener);
+			
+			// Store the session
+			this.debuggerSessions.set(tabId, session);
+			
+			// Trigger a test log to confirm capture is working
+			try {
+				await chrome.debugger.sendCommand(
+					{ tabId: tabId },
+					"Runtime.evaluate",
+					{
+						expression: `console.log('[BROP] Console capture started at ${new Date().toISOString()}');`,
+						returnByValue: true
+					}
+				);
+			} catch (evalError) {
+				console.log(`🔧 Could not inject test log: ${evalError.message}`);
+			}
+			
+			return {
+				success: true,
+				message: "Console capture started",
+				tabId: tabId,
+				tab_title: targetTab.title,
+				tab_url: targetTab.url,
+				capture_started: session.captureStartTime
+			};
+			
+		} catch (error) {
+			console.error(`🔧 Failed to start console capture:`, error);
+			
+			// Clean up on error
+			if (session && session.eventListener) {
+				chrome.debugger.onEvent.removeListener(session.eventListener);
+			}
+			this.debuggerSessions.delete(tabId);
+			
+			// Try to detach debugger
+			try {
+				await chrome.debugger.detach({ tabId: tabId });
+			} catch (detachError) {
+				// Ignore detach errors
+			}
+			
+			throw new Error(`Failed to start console capture: ${error.message}`);
+		}
+	}
+
+	async handleStopConsoleCapture(params) {
+		const { tabId } = params;
+		
+		if (!tabId) {
+			throw new Error("tabId is required");
+		}
+
+		const session = this.debuggerSessions.get(tabId);
+		
+		if (!session) {
+			return {
+				success: false,
+				message: "No active console capture session for this tab"
+			};
+		}
+
+		try {
+			// Remove event listener
+			if (session.eventListener) {
+				chrome.debugger.onEvent.removeListener(session.eventListener);
+			}
+			
+			// Detach debugger
+			await chrome.debugger.detach({ tabId: tabId });
+			
+			// Get final log count
+			const logCount = session.consoleLogs.length;
+			
+			// Remove session
+			this.debuggerSessions.delete(tabId);
+			
+			console.log(`🔧 Stopped console capture for tab ${tabId}, captured ${logCount} logs`);
+			
+			return {
+				success: true,
+				message: "Console capture stopped",
+				tabId: tabId,
+				logs_captured: logCount,
+				capture_duration: Date.now() - session.captureStartTime
+			};
+			
+		} catch (error) {
+			// Remove session even if detach fails
+			this.debuggerSessions.delete(tabId);
+			
+			return {
+				success: false,
+				message: `Error stopping capture: ${error.message}`
+			};
+		}
+	}
+
+	async handleClearConsoleLogs(params) {
+		const { tabId } = params;
+		
+		if (!tabId) {
+			throw new Error("tabId is required");
+		}
+
+		const session = this.debuggerSessions.get(tabId);
+		
+		if (!session || !session.attached) {
+			return {
+				success: false,
+				message: "No active console capture session for this tab",
+				tabId: tabId
+			};
+		}
+
+		// Store the count before clearing
+		const previousCount = session.consoleLogs.length;
+		
+		// Clear the logs
+		session.consoleLogs = [];
+		
+		// Update the capture start time to now (for duration calculations)
+		const previousStartTime = session.captureStartTime;
+		session.captureStartTime = Date.now();
+		
+		console.log(`🔧 Cleared ${previousCount} console logs for tab ${tabId}`);
+		
 		return {
-			logs: filteredLogs,
-			source: "runtime_messaging_primary",
+			success: true,
+			message: "Console logs cleared",
+			tabId: tabId,
+			logs_cleared: previousCount,
+			previous_capture_duration: Date.now() - previousStartTime,
+			new_capture_started: session.captureStartTime
+		};
+	}
+
+	async handleGetConsoleLogs(params) {
+		const { tabId } = params;
+		
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one."
+			);
+		}
+
+		// Check if we have an active capture session
+		const session = this.debuggerSessions.get(tabId);
+		
+		if (!session || !session.attached) {
+			console.log(`🔧 No active console capture session for tab ${tabId}`);
+			return {
+				logs: [],
+				source: "no_active_session",
+				tab_id: tabId,
+				message: "No active console capture session. Use start_console_capture first.",
+				timestamp: Date.now(),
+				total_captured: 0
+			};
+		}
+
+		// Get tab info for response
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			// Tab might have been closed
+			targetTab = { title: "Unknown", url: "Unknown" };
+		}
+
+		console.log(
+			`🔧 Getting console logs for tab ${tabId} - "${targetTab.title}"`
+		);
+
+		// Get logs from session
+		let logs = [...session.consoleLogs];
+		
+		// Apply limit
+		if (params.limit && params.limit > 0) {
+			logs = logs.slice(-params.limit);
+		}
+
+		// Filter by level if specified
+		if (params.level && params.level !== "all") {
+			logs = logs.filter((log) => log.level === params.level);
+		}
+
+		const captureTime = Date.now() - session.captureStartTime;
+		
+		console.log(`🔧 Returning ${logs.length} logs from session (captured over ${captureTime}ms)`);
+
+		return {
+			logs: logs,
+			source: "active_debugger_session",
 			tab_title: targetTab.title,
 			tab_url: targetTab.url,
+			tab_id: tabId,
 			timestamp: Date.now(),
-			total_captured: filteredLogs.length,
-			method: "runtime_messaging_only",
+			total_captured: logs.length,
+			total_in_session: session.consoleLogs.length,
+			capture_duration: captureTime,
+			capture_started: session.captureStartTime
 		};
 	}
 
@@ -370,42 +674,63 @@ class BROPServer {
 
 			// If content script not available, try executeScript approach
 			console.log(
-				"🔧 DEBUG: Content script not available, trying executeScript...",
+				"🔧 DEBUG: Content script not available, trying executeScript with console interception...",
 			);
+			
+			// First, set up console interception if not already done
+			await chrome.scripting.executeScript({
+				target: { tabId: tabId },
+				func: () => {
+					// Set up console interception if not already present
+					if (!window.__bropConsoleIntercepted) {
+						window.__bropConsoleIntercepted = true;
+						window.__bropConsoleLogs = [];
+						
+						const originals = {
+							log: console.log,
+							warn: console.warn,
+							error: console.error,
+							info: console.info,
+							debug: console.debug
+						};
+						
+						['log', 'warn', 'error', 'info', 'debug'].forEach(level => {
+							console[level] = function(...args) {
+								originals[level].apply(console, args);
+								window.__bropConsoleLogs.push({
+									level: level,
+									message: args.map(arg => {
+										try {
+											return typeof arg === 'object' ? JSON.stringify(arg) : String(arg);
+										} catch (e) {
+											return String(arg);
+										}
+									}).join(' '),
+									timestamp: Date.now(),
+									source: window.location.href,
+									line: 0,
+									column: 0
+								});
+								
+								// Keep only last 1000 logs
+								if (window.__bropConsoleLogs.length > 1000) {
+									window.__bropConsoleLogs = window.__bropConsoleLogs.slice(-1000);
+								}
+							};
+						});
+						
+						console.log('BROP: Console interception initialized');
+					}
+				}
+			});
+			
+			// Now get the logs
 			const results = await chrome.scripting.executeScript({
 				target: { tabId: tabId },
 				func: (requestLimit) => {
-					// Capture any available console logs
-					const logs = [];
-
-					// Try to access console buffer if available
-					if (window.console?._buffer) {
-						return window.console._buffer.slice(-requestLimit);
-					}
-
-					// Create test logs to verify the system works
-					const testLogs = [
-						{
-							level: "info",
-							message: "Console log capture test via executeScript",
-							timestamp: Date.now(),
-							source: "executeScript_test",
-						},
-					];
-
-					// Check for any errors in the page
-					const errors = window.addEventListener
-						? []
-						: [
-							{
-								level: "error",
-								message: "Page context not fully available",
-								timestamp: Date.now(),
-								source: "executeScript_test",
-							},
-						];
-
-					return [...testLogs, ...errors];
+					// Return any captured logs
+					const logs = window.__bropConsoleLogs || [];
+					return logs.slice(-requestLimit);
 				},
 				args: [limit],
 			});
@@ -438,6 +763,159 @@ class BROPServer {
 			timestamp: log.timestamp,
 			source: "extension_background",
 		}));
+	}
+
+	async getDebuggerConsoleLogs(tabId, limit = 100) {
+		console.log(`🔧 DEBUG getDebuggerConsoleLogs: Using debugger API for tab ${tabId}`);
+		
+		// Check if we have an existing session for this tab
+		let session = this.debuggerSessions.get(tabId);
+		let newlyAttached = false;
+		
+		try {
+			if (!session) {
+				// Check if debugger is already attached
+				const targets = await chrome.debugger.getTargets();
+				const target = targets.find(t => t.tabId === tabId);
+				
+				if (target && target.attached) {
+					console.log(`🔧 DEBUG: Debugger already attached to tab ${tabId}, creating session`);
+					session = {
+						tabId: tabId,
+						attached: true,
+						consoleLogs: [],
+						eventListener: null
+					};
+					this.debuggerSessions.set(tabId, session);
+				} else {
+					// Attach debugger to the tab
+					await chrome.debugger.attach({ tabId: tabId }, "1.3");
+					newlyAttached = true;
+					console.log(`🔧 DEBUG: Debugger attached to tab ${tabId}`);
+					
+					// Enable Runtime domain to receive console messages
+					await chrome.debugger.sendCommand({ tabId: tabId }, "Runtime.enable", {});
+					
+					// Enable Log domain for additional console capture
+					await chrome.debugger.sendCommand({ tabId: tabId }, "Log.enable", {});
+					
+					console.log(`🔧 DEBUG: Runtime and Log domains enabled`);
+					
+					// Create session
+					session = {
+						tabId: tabId,
+						attached: true,
+						consoleLogs: [],
+						eventListener: null
+					};
+					this.debuggerSessions.set(tabId, session);
+				}
+				
+				// Set up persistent event listener for this session
+				session.eventListener = (source, method, params) => {
+					if (source.tabId !== tabId) return;
+					
+					console.log(`🔧 DEBUG: Persistent event: ${method}`);
+					
+					// Handle console API calls
+					if (method === "Runtime.consoleAPICalled") {
+						const logEntry = {
+							level: params.type,
+							message: params.args.map(arg => {
+								if (arg.type === 'string') return arg.value;
+								if (arg.type === 'number') return String(arg.value);
+								if (arg.type === 'boolean') return String(arg.value);
+								if (arg.type === 'object' && arg.preview) {
+									return arg.preview.description || arg.description || '[Object]';
+								}
+								if (arg.type === 'undefined') return 'undefined';
+								if (arg.type === 'function') return '[Function]';
+								return arg.description || String(arg.value || '[Unknown]');
+							}).join(' '),
+							timestamp: params.timestamp || Date.now(),
+							source: params.stackTrace?.callFrames?.[0]?.url || 'console',
+							line: params.stackTrace?.callFrames?.[0]?.lineNumber || 0,
+							column: params.stackTrace?.callFrames?.[0]?.columnNumber || 0
+						};
+						
+						session.consoleLogs.push(logEntry);
+						console.log(`🔧 DEBUG: Stored console.${logEntry.level}: ${logEntry.message}`);
+						
+						// Keep only recent logs
+						if (session.consoleLogs.length > 1000) {
+							session.consoleLogs = session.consoleLogs.slice(-1000);
+						}
+					}
+					
+					// Also handle Log domain entries
+					if (method === "Log.entryAdded") {
+						const entry = params.entry;
+						const logEntry = {
+							level: entry.level,
+							message: entry.text,
+							timestamp: entry.timestamp || Date.now(),
+							source: entry.source || 'log',
+							line: entry.lineNumber || 0,
+							column: 0
+						};
+						
+						session.consoleLogs.push(logEntry);
+						console.log(`🔧 DEBUG: Stored log entry: ${logEntry.message}`);
+						
+						// Keep only recent logs
+						if (session.consoleLogs.length > 1000) {
+							session.consoleLogs = session.consoleLogs.slice(-1000);
+						}
+					}
+				};
+				
+				// Register the event listener
+				chrome.debugger.onEvent.addListener(session.eventListener);
+			}
+			
+			// If newly attached, trigger a test log
+			if (newlyAttached) {
+				try {
+					const evalResult = await chrome.debugger.sendCommand(
+						{ tabId: tabId },
+						"Runtime.evaluate",
+						{
+							expression: `console.log('[BROP] Console capture active');`,
+							returnByValue: true
+						}
+					);
+					console.log(`🔧 DEBUG: Triggered test log`);
+				} catch (evalError) {
+					console.log(`🔧 DEBUG: Test log error:`, evalError.message);
+				}
+			}
+			
+			// Wait a bit to collect any pending logs
+			await new Promise(resolve => setTimeout(resolve, 500));
+			
+			console.log(`🔧 DEBUG: Session has ${session.consoleLogs.length} stored logs`);
+			
+			// Return the most recent logs from the session
+			return session.consoleLogs.slice(-limit);
+			
+		} catch (error) {
+			console.error(`🔧 DEBUG: Debugger console log capture failed:`, error);
+			
+			// Clean up session on error
+			if (session && session.eventListener) {
+				chrome.debugger.onEvent.removeListener(session.eventListener);
+			}
+			this.debuggerSessions.delete(tabId);
+			
+			// Try to detach debugger
+			try {
+				await chrome.debugger.detach({ tabId: tabId });
+			} catch (detachError) {
+				// Ignore detach errors
+			}
+			
+			throw error;
+		}
 	}
 
 	async handleExecuteConsole(params) {
@@ -1459,14 +1937,21 @@ class BROPServer {
 		// Due to CSP restrictions, we need to be creative about code execution
 		// We'll use chrome.debugger API if available, or fall back to limited execution
 		const executeWithDebugger = async () => {
+			// Check if we already have an active debugger session
+			const existingSession = this.debuggerSessions.get(tabId);
+			let needsDetach = false;
+			
 			// First try using the debugger API if we have permission
 			try {
-				// Attach debugger
-				await chrome.debugger.attach({ tabId }, "1.3");
-				
-				try {
+				// If we don't have an existing session, attach debugger
+				if (!existingSession || !existingSession.attached) {
+					await chrome.debugger.attach({ tabId }, "1.3");
+					needsDetach = true;
 					// Enable runtime
 					await chrome.debugger.sendCommand({ tabId }, "Runtime.enable");
+				}
+				
+				try {
 					
 					// Prepare the expression
 					let expression = code;
@@ -1523,8 +2008,10 @@ class BROPServer {
 						}
 					);
 					
-					// Detach debugger
-					await chrome.debugger.detach({ tabId });
+					// Only detach debugger if we attached it
+					if (needsDetach) {
+						await chrome.debugger.detach({ tabId });
+					}
 					
 					if (response.exceptionDetails) {
 						// Extract the actual error message
@@ -1560,11 +2047,13 @@ class BROPServer {
 						isSerializable: returnByValue && response.result.value !== undefined
 					};
 				} catch (error) {
-					// Always detach debugger on error
-					try {
-						await chrome.debugger.detach({ tabId });
-					} catch (e) {
-						// Ignore detach errors
+					// Only detach debugger if we attached it
+					if (needsDetach) {
+						try {
+							await chrome.debugger.detach({ tabId });
+						} catch (e) {
+							// Ignore detach errors
+						}
 					}
 					throw error;
 				}
@@ -2490,6 +2979,21 @@ class BROPServer {
 
 			// Get updated tab info
 			const tabInfo = await chrome.tabs.get(newTab.id);
+
+			// Ensure content script is injected
+			if (tabInfo.url && 
+				!tabInfo.url.startsWith('chrome://') && 
+				!tabInfo.url.startsWith('chrome-extension://')) {
+				try {
+					await chrome.scripting.executeScript({
+						target: { tabId: tabInfo.id },
+						files: ['content.js']
+					});
+					console.log(`✅ Content script injected into new tab ${tabInfo.id}`);
+				} catch (error) {
+					console.log(`⚠️ Could not inject content script into new tab ${tabInfo.id}:`, error.message);
+				}
+			}
 
 			console.log(
 				`✅ Created new tab: ${newTab.id} - "${tabInfo.title}" - ${tabInfo.url}`,

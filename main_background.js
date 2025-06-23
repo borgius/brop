@@ -36,6 +36,7 @@ class MainBackground {
 		this.setupErrorHandlers();
 		this.setupPopupMessageHandler();
 		this.setupStorageKeepalive();
+		this.setupTabHandlers();
 		this.connectToBridge();
 	}
 
@@ -508,6 +509,57 @@ class MainBackground {
 			heartbeatCounter: 0,
 			extensionStarted: Date.now()
 		});
+	}
+
+	setupTabHandlers() {
+		// Ensure content scripts are injected when tabs are updated
+		chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+			if (changeInfo.status === 'complete' && tab.url && 
+				!tab.url.startsWith('chrome://') && 
+				!tab.url.startsWith('chrome-extension://') &&
+				!tab.url.startsWith('devtools://')) {
+				
+				// Try to inject content script programmatically
+				try {
+					await chrome.scripting.executeScript({
+						target: { tabId: tabId },
+						files: ['content.js']
+					});
+					console.log(`✅ Content script injected into tab ${tabId}`);
+				} catch (error) {
+					// This might fail if content script is already injected or page doesn't allow it
+					console.log(`⚠️ Could not inject content script into tab ${tabId}:`, error.message);
+				}
+			}
+		});
+
+		// Also inject into existing tabs when extension starts
+		this.injectIntoExistingTabs();
+	}
+
+	async injectIntoExistingTabs() {
+		try {
+			const tabs = await chrome.tabs.query({});
+			for (const tab of tabs) {
+				if (tab.url && 
+					!tab.url.startsWith('chrome://') && 
+					!tab.url.startsWith('chrome-extension://') &&
+					!tab.url.startsWith('devtools://')) {
+					
+					try {
+						await chrome.scripting.executeScript({
+							target: { tabId: tab.id },
+							files: ['content.js']
+						});
+						console.log(`✅ Content script injected into existing tab ${tab.id}`);
+					} catch (error) {
+						// Ignore errors for tabs where injection fails
+					}
+				}
+			}
+		} catch (error) {
+			console.error('Error injecting into existing tabs:', error);
+		}
 	}
 
 	async handleExternalPing() {
