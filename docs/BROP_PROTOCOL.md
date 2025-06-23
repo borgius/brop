@@ -634,6 +634,81 @@ Waits for an element to appear on the page with optional visibility check.
 - Ensuring element is visible before interaction
 - Synchronizing with dynamic page updates
 
+#### `evaluate_js`
+
+Executes JavaScript code in the context of a web page.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab to execute JavaScript in
+- `code` (string, required): JavaScript code to execute
+- `args` (array, optional): Arguments to pass to the function (default: [])
+- `awaitPromise` (boolean, optional): Wait for Promise resolution (default: true)
+- `returnByValue` (boolean, optional): Return serialized value vs reference (default: true)
+- `timeout` (number, optional): Execution timeout in milliseconds (default: 30000)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "tabId": 123,
+  "result": {
+    "name": "John Doe",
+    "age": 30
+  },
+  "type": "object",
+  "returnByValue": true,
+  "isSerializable": true,
+  "isPromise": false
+}
+```
+
+**Code Format Examples:**
+
+```javascript
+// Simple expression
+"document.title"
+
+// Multiple statements with return
+"const links = document.querySelectorAll('a'); return links.length"
+
+// Function expression
+"() => document.querySelectorAll('input').length"
+
+// Async function
+"async () => { await new Promise(r => setTimeout(r, 1000)); return 'done'; }"
+
+// With arguments
+"(x, y) => x + y"  // Use with args: [5, 3]
+```
+
+**Features:**
+
+- Flexible code input (expressions, statements, functions)
+- Automatic function wrapping for expressions
+- Promise handling with timeout
+- Argument passing support
+- Serialization of return values
+- Error stack traces
+- Works with async/await
+
+**Error Cases:**
+
+- Syntax errors in JavaScript code
+- Execution timeout
+- Non-serializable objects (when returnByValue=true)
+- Runtime errors in executed code
+- Tab not accessible (chrome:// URLs)
+
+**Use Cases:**
+
+- DOM manipulation and queries
+- Data extraction from pages
+- Testing and automation
+- Injecting utilities
+- Page state inspection
+
 ### Console Operations
 
 #### `get_console_logs`

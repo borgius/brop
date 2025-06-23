@@ -1418,7 +1418,194 @@ class BROPServer {
 	}
 
 	async handleEvaluateJS(params) {
-		throw new Error("EvaluateJS method not yet implemented");
+		const { 
+			tabId, 
+			code,
+			args = [],
+			awaitPromise = true,
+			returnByValue = true,
+			timeout = 30000 
+		} = params;
+
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		if (!code || typeof code !== 'string') {
+			throw new Error("code is required and must be a string containing JavaScript to execute");
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			throw new Error(`Tab ${tabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		// Execute JavaScript in the tab
+		// Due to CSP restrictions, we need to be creative about code execution
+		// We'll use chrome.debugger API if available, or fall back to limited execution
+		const executeWithDebugger = async () => {
+			// First try using the debugger API if we have permission
+			try {
+				// Attach debugger
+				await chrome.debugger.attach({ tabId }, "1.3");
+				
+				try {
+					// Enable runtime
+					await chrome.debugger.sendCommand({ tabId }, "Runtime.enable");
+					
+					// Prepare the expression
+					let expression = code;
+					const trimmedCode = code.trim();
+					
+					// Check if code needs to be wrapped
+					const isFunction = trimmedCode.startsWith('(') || 
+						trimmedCode.startsWith('function') || 
+						trimmedCode.startsWith('async');
+					const hasReturn = trimmedCode.includes('return');
+					
+					if (hasReturn && !isFunction) {
+						// Wrap code with return statement in an IIFE
+						expression = `(function() { ${trimmedCode} })()`;
+					} else if (isFunction && (!args || args.length === 0)) {
+						// It's a function definition without args - need to invoke it
+						if (trimmedCode.startsWith('async') && trimmedCode.includes('=>')) {
+							// Async arrow function
+							expression = `(${trimmedCode})()`;
+						} else if (trimmedCode.startsWith('async function')) {
+							// Async regular function
+							expression = `(${trimmedCode})()`;
+						} else if (trimmedCode.startsWith('(') && trimmedCode.includes('=>')) {
+							// Regular arrow function (check if it has no params)
+							const arrowMatch = trimmedCode.match(/^\(\s*\)\s*=>/);
+							if (arrowMatch) {
+								expression = `(${trimmedCode})()`;
+							}
+						} else if (trimmedCode.startsWith('function')) {
+							// Regular function
+							expression = `(${trimmedCode})()`;
+						}
+					} else if (args && args.length > 0) {
+						// If args are provided, we need to wrap the code properly
+						if (trimmedCode.startsWith('(') && trimmedCode.includes('=>')) {
+							// Arrow function - call it with args
+							expression = `(${trimmedCode})(${args.map(a => JSON.stringify(a)).join(', ')})`;
+						} else if (trimmedCode.startsWith('function') || trimmedCode.startsWith('async function')) {
+							// Regular function - call it with args
+							expression = `(${trimmedCode})(${args.map(a => JSON.stringify(a)).join(', ')})`;
+						}
+					}
+					
+					// Evaluate the expression
+					const response = await chrome.debugger.sendCommand(
+						{ tabId },
+						"Runtime.evaluate",
+						{
+							expression,
+							awaitPromise,
+							returnByValue,
+							timeout: timeout,
+							allowUnsafeEvalBlockedByCSP: true
+						}
+					);
+					
+					// Detach debugger
+					await chrome.debugger.detach({ tabId });
+					
+					if (response.exceptionDetails) {
+						// Extract the actual error message
+						const errorText = response.exceptionDetails.text || 
+							response.exceptionDetails.exception?.description || 
+							'Execution failed';
+						throw new Error(errorText);
+					}
+					
+					// Extract result based on response structure
+					let resultValue;
+					if (response.result.value !== undefined) {
+						resultValue = response.result.value;
+					} else if (response.result.unserializableValue) {
+						// Handle special values like NaN, Infinity, -0
+						resultValue = response.result.unserializableValue;
+					} else if (response.result.type === 'undefined') {
+						// Handle undefined explicitly
+						resultValue = undefined;
+					} else if (response.result.objectId && returnByValue) {
+						// Object was returned but couldn't be serialized
+						resultValue = response.result.description || '[Object]';
+					} else {
+						resultValue = response.result.description;
+					}
+					
+					return {
+						success: true,
+						result: resultValue,
+						type: response.result.type,
+						className: response.result.className,
+						isPromise: response.result.subtype === 'promise',
+						isSerializable: returnByValue && response.result.value !== undefined
+					};
+				} catch (error) {
+					// Always detach debugger on error
+					try {
+						await chrome.debugger.detach({ tabId });
+					} catch (e) {
+						// Ignore detach errors
+					}
+					throw error;
+				}
+			} catch (debuggerError) {
+				// Debugger not available or no permission
+				// Common reasons: file:// URLs, user didn't accept debugger warning, already attached
+				throw debuggerError;
+			}
+		};
+		
+		// Try multiple approaches
+		try {
+			// First attempt: Use debugger API
+			const result = await executeWithDebugger();
+			return {
+				success: true,
+				tabId: tabId,
+				result: result.result,
+				type: result.type,
+				returnByValue: returnByValue,
+				isSerializable: result.isSerializable !== false,
+				isPromise: result.isPromise || false
+			};
+		} catch (debuggerError) {
+			// Log the debugger error for debugging
+			console.warn('[evaluate_js] Debugger API failed:', debuggerError.message);
+			
+			// Check if this is a file:// URL issue
+			// Some operations work with file:// URLs but others don't
+			if (targetTab.url.startsWith('file://')) {
+				// If the error is about specific operations that don't work with file:// URLs
+				if (debuggerError.message.includes('Cannot attach') || 
+					debuggerError.message.includes('Object reference chain is too long') ||
+					debuggerError.message.includes('Debugger is not attached')) {
+					throw new Error('This JavaScript operation cannot be executed on file:// URLs due to Chrome security restrictions. Please use a http:// or https:// URL for full evaluate_js functionality.');
+				}
+			}
+			
+			// For other cases, throw the original error with context
+			throw new Error(`JavaScript execution failed: ${debuggerError.message}`);
+		}
 	}
 
 	async handleFillForm(params) {
