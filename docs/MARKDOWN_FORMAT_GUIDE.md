@@ -5,6 +5,7 @@ This guide explains how the BROP extension formats web pages into markdown with 
 ## Overview
 
 When using the `get_simplified_dom` command with `includeSelectors: true`, the BROP extension converts web pages to markdown and embeds CSS selectors in HTML comments. This allows AI agents to:
+
 - Read human-friendly markdown content
 - Identify actionable elements with precise CSS selectors
 - Understand element types and form structure
@@ -13,30 +14,34 @@ When using the `get_simplified_dom` command with `includeSelectors: true`, the B
 ## Quick Reference
 
 ### Format Syntax
+
 ```
 Element annotation: <!--elementType:selector-->
 Form boundaries:    <!-- form-start: formSelector --> ... <!-- form-end -->
 ```
 
 ### Common Patterns
+
 ```markdown
-[Sign In]<!--button:#login-btn-->                     # Button
-[text: Email]<!--text:[name="email"]-->               # Text input
-[password: Password]<!--password:#pass-->             # Password input
-[Remember me]<!--checkbox:[name="remember"]-->        # Checkbox
-[Male]<!--radio:[name="gender"][value="m"]-->         # Radio button
-[select-one: USA, UK...]<!--select-one:#country-->    # Dropdown
-[textarea: Message]<!--textarea:#msg-->               # Textarea
-[Home](/)<!--link:#home-link-->                       # Link
+[Sign In]<!--button:#login-btn--> # Button
+[text: Email]<!--text:[name="email"]--> # Text input
+[password: Password]<!--password:#pass--> # Password input
+[Remember me]<!--checkbox:[name="remember"]--> # Checkbox
+[Male]<!--radio:[name="gender"][value="m"]--> # Radio button
+[select-one: USA, UK...]<!--select-one:#country--> # Dropdown
+[textarea: Message]<!--textarea:#msg--> # Textarea
+[Home](/)<!--link:#home-link--> # Link
 ```
 
 ## Key Format Rules
 
 1. **Element Type and Selector Format**: `<!--elementType:selector-->`
+
    - Always includes the element type before the colon
    - Example: `<!--button:#submit-->`, `<!--text:[name="email"]-->`
 
 2. **Form Boundaries**: Forms are wrapped with start/end markers
+
    - Start: `<!-- form-start: formSelector -->`
    - End: `<!-- form-end -->`
    - All form elements appear between these markers
@@ -74,6 +79,7 @@ Input elements show their type and placeholder/value content with element type i
 ```
 
 **Format**: `[type: content]<!--elementType:selector-->`
+
 - `type`: The displayed input type (text, email, password, etc.)
 - `content`: Value, placeholder text, or label for checkboxes/radios
 - `elementType`: The actual element type in the selector
@@ -113,6 +119,7 @@ Form elements are grouped with form boundaries:
 
 ```markdown
 <!-- form-start: #login-form -->
+
 ## Login Form
 
 [text: Username]<!--text:#username-->
@@ -120,9 +127,11 @@ Form elements are grouped with form boundaries:
 [Remember me]<!--checkbox:[name="remember"]-->
 
 [Sign In]<!--button:#signin-btn-->
+
 <!-- form-end -->
 
 <!-- form-start: .contact-form -->
+
 ## Contact Us
 
 [text: Name]<!--text:[name="name"]-->
@@ -131,6 +140,7 @@ Form elements are grouped with form boundaries:
 [textarea: Your message]<!--textarea:#message-->
 
 [Submit]<!--button:.submit-button-->
+
 <!-- form-end -->
 ```
 
@@ -150,7 +160,6 @@ The element type prefix in selectors helps identify the DOM element:
 - `clickable` - Elements with onclick or role attributes
 - Other HTML tag names for remaining elements
 
-
 ## CSS Selector Priority
 
 The system uses a priority order to generate the most reliable selector:
@@ -169,6 +178,7 @@ The system uses a priority order to generate the most reliable selector:
 
 ```markdown
 <!-- form-start: #login-form -->
+
 ## Sign In
 
 Please enter your credentials to continue.
@@ -180,6 +190,7 @@ Please enter your credentials to continue.
 
 [Sign In]<!--button:#signin-button-->
 [Forgot Password?](https://example.com/reset)<!--link:.forgot-password-link-->
+
 <!-- form-end -->
 ```
 
@@ -199,6 +210,7 @@ Please enter your credentials to continue.
 
 ```markdown
 <!-- form-start: #registration-form -->
+
 ## User Registration
 
 Create your account
@@ -213,6 +225,7 @@ Create your account
 
 [I agree to the terms]<!--checkbox:#terms-checkbox-->
 [Create Account]<!--button:.submit-button-->
+
 <!-- form-end -->
 ```
 
@@ -244,6 +257,7 @@ Create your account
 ### Selector Priority Rules
 
 When multiple selector options exist, the system chooses in this order:
+
 1. ID selector (most specific)
 2. ARIA label attribute
 3. data-testid attribute
@@ -257,14 +271,16 @@ When multiple selector options exist, the system chooses in this order:
 AI agents can extract and use these selectors for browser automation:
 
 1. **Parse the element annotation**:
+
    ```
    Find: [Sign In]<!--button:#signin-button-->
-   Extract: 
+   Extract:
    - Element type: button
    - Selector: #signin-button
    ```
 
 2. **Identify form boundaries**:
+
    ```
    Find: <!-- form-start: #login-form -->
    Extract:
@@ -272,7 +288,8 @@ AI agents can extract and use these selectors for browser automation:
    - All elements until <!-- form-end --> belong to this form
    ```
 
-2. **Use with automation commands**:
+3. **Use with automation commands**:
+
    ```json
    {
      "method": "click",
@@ -282,7 +299,7 @@ AI agents can extract and use these selectors for browser automation:
    }
    ```
 
-3. **Fill form fields**:
+4. **Fill form fields**:
    ```json
    {
      "method": "type",
@@ -311,6 +328,7 @@ AI agents can extract and use these selectors for browser automation:
 ## Supported Element Types
 
 The following elements receive CSS selectors:
+
 - `<a>` - Links
 - `<button>` - Buttons
 - `<input>` - All input types
@@ -373,6 +391,7 @@ The `fill_form` command uses the same identifiers shown in the selectors:
 ### 3. Field Matching Strategies
 
 The `fill_form` command locates fields in this order:
+
 1. **Name attribute**: `[name="fieldname"]` → use `"fieldname": "value"`
 2. **ID attribute**: `#field-id` → use `"field-id": "value"`
 3. **Data-testid**: `[data-testid="field"]` → use `"field": "value"`
@@ -383,7 +402,10 @@ The `fill_form` command locates fields in this order:
 
 ```javascript
 // Step 1: Get page structure
-const dom = await sendCommand('get_simplified_dom', { tabId, includeSelectors: true });
+const dom = await sendCommand("get_simplified_dom", {
+  tabId,
+  includeSelectors: true,
+});
 
 // Markdown shows:
 // <!-- form-start: #login-form -->
@@ -395,14 +417,14 @@ const dom = await sendCommand('get_simplified_dom', { tabId, includeSelectors: t
 // <!-- form-end -->
 
 // Step 2: Fill and submit form
-const result = await sendCommand('fill_form', {
+const result = await sendCommand("fill_form", {
   tabId,
   formData: {
-    "username": "john.doe",      // Matches #username
-    "pass": "secret123",         // Matches [name="pass"]
-    "remember": true             // Matches [name="remember"]
+    username: "john.doe", // Matches #username
+    pass: "secret123", // Matches [name="pass"]
+    remember: true, // Matches [name="remember"]
   },
-  submit: true
+  submit: true,
 });
 ```
 
@@ -436,17 +458,18 @@ When a page has multiple forms, use the form selector from the form boundaries:
 // <!-- form-end -->
 
 // Target specific form:
-const result = await sendCommand('fill_form', {
+const result = await sendCommand("fill_form", {
   tabId,
   formData: {
-    "user": "john",
-    "pass": "secret"
+    user: "john",
+    pass: "secret",
   },
-  formSelector: ".login-form"  // Only fill fields in this form
+  formSelector: ".login-form", // Only fill fields in this form
 });
 ```
 
 The form boundaries help AI agents:
+
 - Understand which fields belong together
 - Target specific forms on complex pages
 - Avoid filling unrelated fields

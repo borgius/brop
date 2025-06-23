@@ -1389,20 +1389,20 @@ class BROPServer {
 										// For form elements, include the type in the text
 										const inputType = node.type || node.tagName.toLowerCase();
 										const displayContent = content || node.placeholder || node.value || 'input';
-										
+
 										// For checkboxes and radios, show their label or value
 										if (inputType === 'checkbox' || inputType === 'radio') {
 											const label = node.labels?.[0]?.textContent || content || node.value || inputType;
 											return `[${label}]<!--${elementType}:${selector}-->`;
 										}
-										
+
 										// For select elements, show options
 										if (node.tagName === 'SELECT') {
 											const options = Array.from(node.options).map(opt => opt.text).slice(0, 3).join(', ');
 											const more = node.options.length > 3 ? '...' : '';
 											return `[${elementType}: ${options}${more}]<!--${elementType}:${selector}-->`;
 										}
-										
+
 										return `[${inputType}: ${displayContent}]<!--${elementType}:${selector}-->`;
 									}
 
@@ -1433,7 +1433,7 @@ class BROPServer {
 						if (includeSelectors) {
 							// Clone the content element to avoid modifying the actual DOM
 							const clonedElement = contentElement.cloneNode(true);
-							
+
 							// Mark all forms with boundaries
 							const forms = clonedElement.querySelectorAll('form');
 							forms.forEach((form, index) => {
