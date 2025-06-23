@@ -461,6 +461,64 @@ Captures a screenshot of the visible tab area.
 }
 ```
 
+### Element Interaction
+
+#### `click`
+
+Clicks on an element identified by a CSS selector.
+
+**Parameters:**
+
+- `tabId` (number, required): Tab containing the element
+- `selector` (string, required): CSS selector to identify the element
+- `waitForNavigation` (boolean, optional): Wait for potential navigation after click (default: false)
+- `timeout` (number, optional): Timeout for finding element in milliseconds (default: 5000)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "tabId": 123,
+  "selector": "#submit-button",
+  "clicked": {
+    "tagName": "BUTTON",
+    "id": "submit-button",
+    "className": "btn btn-primary",
+    "text": "Submit",
+    "href": null,
+    "type": "submit"
+  },
+  "position": {
+    "x": 100,
+    "y": 200,
+    "width": 80,
+    "height": 40
+  },
+  "navigation": {
+    "occurred": true,
+    "newUrl": "https://example.com/success",
+    "oldUrl": "https://example.com/form"
+  }
+}
+```
+
+**Features:**
+
+- Waits for element to appear (with timeout)
+- Validates element is visible and not disabled
+- Simulates complete mouse event sequence (mousedown, click, mouseup)
+- Native click() for better compatibility with links and buttons
+- Optional navigation detection
+- Returns clicked element details and position
+
+**Error Cases:**
+
+- Element not found within timeout
+- Element is not visible
+- Element is disabled
+- Tab not accessible (chrome:// URLs)
+
 ### Console Operations
 
 #### `get_console_logs`

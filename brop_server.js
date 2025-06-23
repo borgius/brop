@@ -31,10 +31,7 @@ class BROPServer {
 		this.messageHandlers.set("activate_tab", this.handleActivateTab.bind(this));
 
 		// System methods
-		this.messageHandlers.set(
-			"get_server_status",
-			this.handleGetServerStatus.bind(this),
-		);
+		this.messageHandlers.set("get_server_status", this.handleGetServerStatus.bind(this));
 
 		// Page console access
 		this.messageHandlers.set("get_console_logs", this.handleGetConsoleLogs.bind(this));
@@ -657,7 +654,179 @@ class BROPServer {
 
 	// Additional BROP methods (stubs for now, can be implemented later)
 	async handleClick(params) {
-		throw new Error("Click method not yet implemented");
+		const { tabId, selector, waitForNavigation = false, timeout = 5000 } = params;
+
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		if (!selector) {
+			throw new Error("selector is required - CSS selector to identify the element to click");
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(tabId);
+		} catch (error) {
+			throw new Error(`Tab ${tabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		// Execute click in the tab
+		const results = await chrome.scripting.executeScript({
+			target: { tabId },
+			func: (selector, timeout) => {
+				// Helper to wait for element
+				const waitForElement = (selector, timeout) => {
+					return new Promise((resolve, reject) => {
+						const element = document.querySelector(selector);
+						if (element) {
+							resolve(element);
+							return;
+						}
+
+						const observer = new MutationObserver((mutations, obs) => {
+							const element = document.querySelector(selector);
+							if (element) {
+								obs.disconnect();
+								resolve(element);
+							}
+						});
+
+						observer.observe(document.body, {
+							childList: true,
+							subtree: true
+						});
+
+						setTimeout(() => {
+							observer.disconnect();
+							reject(new Error(`Element not found: ${selector}`));
+						}, timeout);
+					});
+				};
+
+				// Find and click element
+				return (async () => {
+					try {
+						const element = await waitForElement(selector, timeout);
+						
+						// Check if element is visible and clickable
+						const rect = element.getBoundingClientRect();
+						const isVisible = rect.width > 0 && rect.height > 0 && 
+							window.getComputedStyle(element).visibility !== 'hidden' &&
+							window.getComputedStyle(element).display !== 'none';
+
+						if (!isVisible) {
+							throw new Error(`Element is not visible: ${selector}`);
+						}
+
+						// Check if element is disabled
+						if (element.disabled) {
+							throw new Error(`Element is disabled: ${selector}`);
+						}
+
+						// Simulate mouse events for better compatibility
+						const clickEvent = new MouseEvent('click', {
+							bubbles: true,
+							cancelable: true,
+							view: window,
+							button: 0,
+							buttons: 1,
+							clientX: rect.left + rect.width / 2,
+							clientY: rect.top + rect.height / 2
+						});
+
+						// Also trigger mousedown and mouseup for complete simulation
+						element.dispatchEvent(new MouseEvent('mousedown', {
+							bubbles: true,
+							cancelable: true,
+							view: window,
+							button: 0,
+							buttons: 1
+						}));
+
+						element.dispatchEvent(clickEvent);
+
+						element.dispatchEvent(new MouseEvent('mouseup', {
+							bubbles: true,
+							cancelable: true,
+							view: window,
+							button: 0,
+							buttons: 0
+						}));
+
+						// For links and buttons, also try native click
+						if (element.tagName === 'A' || element.tagName === 'BUTTON' || 
+							element.tagName === 'INPUT' || element.role === 'button') {
+							element.click();
+						}
+
+						return {
+							success: true,
+							element: {
+								tagName: element.tagName,
+								id: element.id || null,
+								className: element.className || null,
+								text: element.textContent?.substring(0, 100) || null,
+								href: element.href || null,
+								type: element.type || null
+							},
+							boundingBox: {
+								x: rect.x,
+								y: rect.y,
+								width: rect.width,
+								height: rect.height
+							}
+						};
+					} catch (error) {
+						return {
+							success: false,
+							error: error.message
+						};
+					}
+				})();
+			},
+			args: [selector, timeout]
+		});
+
+		const result = results[0]?.result;
+		if (!result || !result.success) {
+			throw new Error(result?.error || 'Click operation failed');
+		}
+
+		// If waitForNavigation is true, wait a bit for potential navigation
+		if (waitForNavigation) {
+			await new Promise(resolve => setTimeout(resolve, 1000));
+			
+			// Get updated tab info
+			const updatedTab = await chrome.tabs.get(tabId);
+			result.navigation = {
+				occurred: updatedTab.url !== targetTab.url,
+				newUrl: updatedTab.url,
+				oldUrl: targetTab.url
+			};
+		}
+
+		return {
+			success: true,
+			tabId: tabId,
+			selector: selector,
+			clicked: result.element,
+			position: result.boundingBox,
+			navigation: result.navigation || null
+		};
 	}
 
 	async handleType(params) {
