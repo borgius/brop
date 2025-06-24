@@ -40,9 +40,9 @@
 		"url": "https://github.com/madappgang/mcp-brop/issues"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.12.2",
-		"ws": "^8.14.0",
-		"zod": "^3.25.64"
+		"@modelcontextprotocol/sdk": "^1.13.1",
+		"ws": "^8.18.2",
+		"zod": "^3.25.67"
 	},
 	"engines": {
 		"node": ">=18.0.0"
