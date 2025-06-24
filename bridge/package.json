@@ -1,13 +1,17 @@
 {
 	"name": "@madappgang/brop-mcp",
-	"version": "2.7.0",
+	"version": "2.7.1",
 	"description": "Model Context Protocol server for Browser Remote Operations Protocol (BROP) - Control Chrome browser remotely via MCP",
 	"type": "module",
 	"main": "mcp-server.js",
 	"bin": {
 		"brop-mcp-server": "mcp-server.js"
 	},
-	"files": ["mcp-server.js", "bridge_server.js", "README.md"],
+	"files": [
+		"mcp-server.js",
+		"bridge_server.js",
+		"README.md"
+	],
 	"scripts": {
 		"start": "node bridge_server.js",
 		"dev": "node bridge_server.js",
