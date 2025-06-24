@@ -491,6 +491,13 @@ class UnifiedBridgeServer {
 	}
 
 	handleExtensionClient(ws, req) {
+		// Check if an extension is already connected
+		if (this.extensionClient && this.extensionClient.readyState === WebSocket.OPEN) {
+			this.logger.logError("EXT", "connect", "extension", "Already connected");
+			ws.close(1000, "Extension already connected");
+			return;
+		}
+
 		this.logger.logConnect("EXT", "extension");
 		this.extensionClient = ws;
 

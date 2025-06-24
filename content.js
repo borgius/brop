@@ -6,11 +6,11 @@
 if (typeof window.BROP === "undefined") {
 	class BROPContentScript {
 		constructor() {
+			this.consoleLogs = [];
+			this.maxConsoleHistory = 1000;
 			this.setupMessageListener();
 			this.setupConsoleInterception();
 			this.setupServiceWorkerKeepalive();
-			this.consoleLogs = [];
-			this.maxConsoleHistory = 1000;
 		}
 
 		setupMessageListener() {

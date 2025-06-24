@@ -11,8 +11,10 @@ class MainBackground {
 	constructor() {
 		this.bridgeSocket = null;
 		this.reconnectAttempts = 0;
+		this.reconnectTimer = null;
 		this.connectionStatus = "disconnected";
 		this.isConnected = false;
+		this.isConnecting = false;
 		this.enabled = true;
 		this.pingInterval = null;
 		this.lastPongTime = Date.now();
@@ -212,6 +214,31 @@ class MainBackground {
 	}
 
 	async connectToBridge() {
+		// Prevent multiple simultaneous connection attempts
+		if (this.isConnecting) {
+			console.log("🔄 Connection already in progress, skipping...");
+			return;
+		}
+
+		// Check if already connected
+		if (this.isConnected && this.bridgeSocket && 
+			this.bridgeSocket.readyState === WebSocket.OPEN) {
+			console.log("✅ Already connected to bridge, skipping...");
+			return;
+		}
+
+		// Clean up any existing socket
+		if (this.bridgeSocket) {
+			try {
+				this.bridgeSocket.close();
+			} catch (e) {
+				// Ignore errors when closing
+			}
+			this.bridgeSocket = null;
+		}
+
+		this.isConnecting = true;
+
 		try {
 			console.log("🔗 Connecting to multiplexed bridge server...");
 			this.bridgeSocket = new WebSocket(this.bridgeUrl);
@@ -219,8 +246,10 @@ class MainBackground {
 			this.bridgeSocket.onopen = () => {
 				console.log("✅ Connected to multiplexed bridge server");
 				this.isConnected = true;
+				this.isConnecting = false;
 				this.connectionStatus = "connected";
 				this.reconnectAttempts = 0;
+				this.lastPongTime = Date.now();
 				this.startKeepalive();
 			};
 
@@ -231,6 +260,7 @@ class MainBackground {
 			this.bridgeSocket.onclose = () => {
 				console.log("🔌 Bridge connection closed");
 				this.isConnected = false;
+				this.isConnecting = false;
 				this.connectionStatus = "disconnected";
 				this.stopKeepalive();
 				this.scheduleReconnect();
@@ -239,10 +269,12 @@ class MainBackground {
 			this.bridgeSocket.onerror = (error) => {
 				console.error("❌ Bridge connection error:", error);
 				this.isConnected = false;
+				this.isConnecting = false;
 				this.connectionStatus = "disconnected";
 			};
 		} catch (error) {
 			console.error("Failed to connect to bridge:", error);
+			this.isConnecting = false;
 			this.scheduleReconnect();
 		}
 	}
@@ -250,13 +282,22 @@ class MainBackground {
 	// CDP connection is now handled by CDPServer
 
 	scheduleReconnect() {
+		// Clear any existing reconnect timer
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
+
 		if (this.reconnectAttempts < 10) {
 			this.reconnectAttempts++;
 			const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 30000);
 			console.log(
 				`🔄 Reconnecting to bridge in ${delay}ms (attempt ${this.reconnectAttempts})`,
 			);
-			setTimeout(() => this.connectToBridge(), delay);
+			this.reconnectTimer = setTimeout(() => {
+				this.reconnectTimer = null;
+				this.connectToBridge();
+			}, delay);
 		}
 	}
 

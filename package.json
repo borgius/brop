@@ -1,6 +1,6 @@
 {
 	"name": "mcp-brop",
-	"version": "2.7.0",
+	"version": "2.7.1",
 	"description": "Browser Remote Operations Protocol with multiplexed CDP relay support",
 	"type": "module",
 	"main": "background.js",
