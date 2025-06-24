@@ -3,9 +3,9 @@
  * Test to show how forms and form elements appear in markdown output
  */
 
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import WebSocket from 'ws';
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import WebSocket from "ws";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,19 +19,19 @@ class BROPTestClient {
 
 	async connect() {
 		return new Promise((resolve, reject) => {
-			this.ws = new WebSocket('ws://localhost:9225?name=form_output_test');
+			this.ws = new WebSocket("ws://localhost:9225?name=form_output_test");
 
-			this.ws.on('open', () => {
-				console.log('✅ Connected to BROP server');
+			this.ws.on("open", () => {
+				console.log("✅ Connected to BROP server");
 				resolve();
 			});
 
-			this.ws.on('error', (error) => {
-				console.error('❌ WebSocket error:', error.message);
+			this.ws.on("error", (error) => {
+				console.error("❌ WebSocket error:", error.message);
 				reject(error);
 			});
 
-			this.ws.on('message', (data) => {
+			this.ws.on("message", (data) => {
 				try {
 					const response = JSON.parse(data.toString());
 					const pending = this.pendingRequests.get(response.id);
@@ -44,7 +44,7 @@ class BROPTestClient {
 						}
 					}
 				} catch (error) {
-					console.error('Error parsing response:', error);
+					console.error("Error parsing response:", error);
 				}
 			});
 		});
@@ -62,7 +62,7 @@ class BROPTestClient {
 			setTimeout(() => {
 				if (this.pendingRequests.has(id)) {
 					this.pendingRequests.delete(id);
-					reject(new Error('Request timeout'));
+					reject(new Error("Request timeout"));
 				}
 			}, 30000);
 		});
@@ -76,94 +76,103 @@ class BROPTestClient {
 }
 
 async function runTest() {
-	console.log('🧪 Testing Form Elements in Markdown Output');
-	console.log(`=${'='.repeat(60)}`);
+	console.log("🧪 Testing Form Elements in Markdown Output");
+	console.log(`=${"=".repeat(60)}`);
 
 	const client = new BROPTestClient();
 
 	try {
 		// Connect to BROP server
 		await client.connect();
-		console.log('');
+		console.log("");
 
 		// Use our local test file that has various form elements
-		const testFilePath = join(dirname(__dirname), 'test/test-selector-page.html');
+		const testFilePath = join(
+			dirname(__dirname),
+			"test/test-selector-page.html",
+		);
 		const testFileUrl = `file://${testFilePath}`;
 
-		console.log('📋 Creating test tab with form elements...');
-		const tab = await client.sendCommand('create_tab', {
+		console.log("📋 Creating test tab with form elements...");
+		const tab = await client.sendCommand("create_tab", {
 			url: testFileUrl,
-			active: true
+			active: true,
 		});
 		console.log(`✅ Created tab ${tab.tabId}: ${tab.title}`);
-		console.log('');
+		console.log("");
 
 		// Wait for page to load
-		await new Promise(resolve => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, 2000));
 
 		// Extract with CSS selectors
-		console.log('📄 Extracting markdown with CSS selectors...\n');
-		const result = await client.sendCommand('get_simplified_dom', {
+		console.log("📄 Extracting markdown with CSS selectors...\n");
+		const result = await client.sendCommand("get_simplified_dom", {
 			tabId: tab.tabId,
-			format: 'markdown',
+			format: "markdown",
 			enableDetailedResponse: false,
-			includeSelectors: true
+			includeSelectors: true,
 		});
 
 		// Display the full markdown to see how forms appear
-		console.log(`=${'='.repeat(60)}`);
-		console.log('FULL MARKDOWN OUTPUT:');
-		console.log(`=${'='.repeat(60)}`);
+		console.log(`=${"=".repeat(60)}`);
+		console.log("FULL MARKDOWN OUTPUT:");
+		console.log(`=${"=".repeat(60)}`);
 		console.log(result.markdown);
-		console.log(`=${'='.repeat(60)}`);
+		console.log(`=${"=".repeat(60)}`);
 
 		// Extract and categorize form elements
-		console.log('\n📊 FORM ELEMENTS ANALYSIS:\n');
+		console.log("\n📊 FORM ELEMENTS ANALYSIS:\n");
 
 		// Find all input elements
-		// biome-ignore lint/correctness/noEmptyCharacterClassInRegex: <explanation>
-		const inputMatches = result.markdown?.match(/\[(text|email|password|input|textarea|select):[^]]*?\]<!--[^>]+-->/gi) || [];
+		const inputMatches =
+			result.markdown?.match(
+				/\[(text|email|password|input|textarea|select):[\s\S]*?\]<!--[^>]+-->/gi,
+			) || [];
 		console.log(`Input Fields Found: ${inputMatches.length}`);
 		if (inputMatches.length > 0) {
-			console.log('Examples:');
+			console.log("Examples:");
 			for (const match of inputMatches) {
 				console.log(`  - ${match}`);
 			}
 		}
 
 		// Find all button elements
-		// biome-ignore lint/correctness/noEmptyCharacterClassInRegex: <explanation>
-		const buttonMatches = result.markdown?.match(/\[(?!text:|email:|password:|input:|textarea:|select:)[^]]*?\]<!--[^>]*(?:button|submit|btn)[^>]*-->/gi) || [];
+		const buttonMatches =
+			result.markdown?.match(
+				/\[(?!text:|email:|password:|input:|textarea:|select:)[\s\S]*?\]<!--[^>]*(?:button|submit|btn)[^>]*-->/gi,
+			) || [];
 		console.log(`\nButtons Found: ${buttonMatches.length}`);
 		if (buttonMatches.length > 0) {
-			console.log('Examples:');
+			console.log("Examples:");
 			for (const match of buttonMatches) {
 				console.log(`  - ${match}`);
 			}
 		}
 
 		// Find label elements
-		const labelMatches = result.markdown?.match(/[^[]*<!--[^>]*label[^>]*-->/gi) || [];
+		const labelMatches =
+			result.markdown?.match(/[^[]*<!--[^>]*label[^>]*-->/gi) || [];
 		console.log(`\nLabels Found: ${labelMatches.length}`);
 		if (labelMatches.length > 0) {
-			console.log('Examples:');
+			console.log("Examples:");
 			for (const match of labelMatches) {
 				console.log(`  - ${match.trim()}`);
 			}
 		}
 
 		// Show lines that contain form-related content
-		console.log('\n📝 FORM-RELATED LINES:\n');
-		const lines = result.markdown?.split('\n') || [];
-		const formLines = lines.filter(line =>
-			line.toLowerCase().includes('form') ||
-			line.toLowerCase().includes('input') ||
-			line.toLowerCase().includes('button') ||
-			line.toLowerCase().includes('username') ||
-			line.toLowerCase().includes('password') ||
-			line.toLowerCase().includes('email') ||
-			line.toLowerCase().includes('textarea') ||
-			line.toLowerCase().includes('select')
+		console.log("\n📝 FORM-RELATED LINES:\n");
+		const lines = result.markdown?.split("\n") || [];
+		const formLines = lines.filter(
+			(line) =>
+				line.toLowerCase().includes("form") ||
+				line.toLowerCase().includes("input") ||
+				line.toLowerCase().includes("button") ||
+				line.toLowerCase().includes("username") ||
+				line.toLowerCase().includes("password") ||
+				line.toLowerCase().includes("email") ||
+				line.toLowerCase().includes("textarea") ||
+				line.toLowerCase().includes("select"),
 		);
 
 		for (const line of formLines) {
@@ -173,23 +182,22 @@ async function runTest() {
 		}
 
 		// Clean up
-		console.log('\n🧹 Cleaning up...');
-		await client.sendCommand('close_tab', { tabId: tab.tabId });
-		console.log('✅ Test tab closed');
-
+		console.log("\n🧹 Cleaning up...");
+		await client.sendCommand("close_tab", { tabId: tab.tabId });
+		console.log("✅ Test tab closed");
 	} catch (error) {
-		console.error('\n❌ Test failed:', error.message);
+		console.error("\n❌ Test failed:", error.message);
 	} finally {
 		client.disconnect();
-		console.log('\n✅ Test completed');
+		console.log("\n✅ Test completed");
 	}
 }
 
 // Run test
-console.log('');
+console.log("");
 runTest()
 	.then(() => process.exit(0))
-	.catch(error => {
-		console.error('Fatal error:', error);
+	.catch((error) => {
+		console.error("Fatal error:", error);
 		process.exit(1);
 	});

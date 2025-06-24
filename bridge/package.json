@@ -7,11 +7,7 @@
 	"bin": {
 		"brop-mcp-server": "mcp-server.js"
 	},
-	"files": [
-		"mcp-server.js",
-		"bridge_server.js",
-		"README.md"
-	],
+	"files": ["mcp-server.js", "bridge_server.js", "README.md"],
 	"scripts": {
 		"start": "node bridge_server.js",
 		"dev": "node bridge_server.js",

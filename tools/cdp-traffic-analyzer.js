@@ -1,53 +1,61 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { basename, resolve } from "node:path";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
 if (args.length < 2) {
-    console.log('Usage: cdp-traffic-analyzer <native-dump.jsonl> <bridge-dump.jsonl> [output.html]');
-    console.log('\nExample:');
-    console.log('  cdp-traffic-analyzer cdp_dump_native.jsonl cdp_dump_bridge.jsonl comparison.html');
-    process.exit(1);
+	console.log(
+		"Usage: cdp-traffic-analyzer <native-dump.jsonl> <bridge-dump.jsonl> [output.html]",
+	);
+	console.log("\nExample:");
+	console.log(
+		"  cdp-traffic-analyzer cdp_dump_native.jsonl cdp_dump_bridge.jsonl comparison.html",
+	);
+	process.exit(1);
 }
 
-const [nativeFile, bridgeFile, outputFile = 'cdp-comparison.html'] = args;
+const [nativeFile, bridgeFile, outputFile = "cdp-comparison.html"] = args;
 
 // Validate input files
 if (!existsSync(nativeFile)) {
-    console.error(`Error: Native dump file not found: ${nativeFile}`);
-    process.exit(1);
+	console.error(`Error: Native dump file not found: ${nativeFile}`);
+	process.exit(1);
 }
 
 if (!existsSync(bridgeFile)) {
-    console.error(`Error: Bridge dump file not found: ${bridgeFile}`);
-    process.exit(1);
+	console.error(`Error: Bridge dump file not found: ${bridgeFile}`);
+	process.exit(1);
 }
 
-console.log('CDP Traffic Analyzer');
-console.log('===================');
+console.log("CDP Traffic Analyzer");
+console.log("===================");
 console.log(`Native dump: ${nativeFile}`);
 console.log(`Bridge dump: ${bridgeFile}`);
 console.log(`Output file: ${outputFile}\n`);
 
 // Read and parse dump files
 function readDumpFile(filename) {
-    try {
-        const content = readFileSync(filename, 'utf-8');
-        const lines = content.split('\n').filter(l => l.trim());
-        return lines.map((line, idx) => {
-            try {
-                return JSON.parse(line);
-            } catch (e) {
-                console.error(`Error parsing line ${idx + 1} in ${filename}: ${e.message}`);
-                return null;
-            }
-        }).filter(msg => msg !== null);
-    } catch (e) {
-        console.error(`Error reading ${filename}: ${e.message}`);
-        return [];
-    }
+	try {
+		const content = readFileSync(filename, "utf-8");
+		const lines = content.split("\n").filter((l) => l.trim());
+		return lines
+			.map((line, idx) => {
+				try {
+					return JSON.parse(line);
+				} catch (e) {
+					console.error(
+						`Error parsing line ${idx + 1} in ${filename}: ${e.message}`,
+					);
+					return null;
+				}
+			})
+			.filter((msg) => msg !== null);
+	} catch (e) {
+		console.error(`Error reading ${filename}: ${e.message}`);
+		return [];
+	}
 }
 
 const nativeMessages = readDumpFile(nativeFile);
@@ -58,58 +66,59 @@ console.log(`Loaded ${bridgeMessages.length} bridge messages`);
 
 // Analyze messages
 function analyzeMessages(messages) {
-    const analysis = {
-        total: messages.length,
-        byDirection: { clientToServer: 0, serverToClient: 0 },
-        methods: new Map(),
-        errors: [],
-        sessionIds: new Set(),
-        timing: { first: null, last: null, duration: 0 }
-    };
+	const analysis = {
+		total: messages.length,
+		byDirection: { clientToServer: 0, serverToClient: 0 },
+		methods: new Map(),
+		errors: [],
+		sessionIds: new Set(),
+		timing: { first: null, last: null, duration: 0 },
+	};
 
-    messages.forEach((msg, idx) => {
-        // Direction
-        if (msg.direction === 'client_to_server') {
-            analysis.byDirection.clientToServer++;
-        } else {
-            analysis.byDirection.serverToClient++;
-        }
+	messages.forEach((msg, idx) => {
+		// Direction
+		if (msg.direction === "client_to_server") {
+			analysis.byDirection.clientToServer++;
+		} else {
+			analysis.byDirection.serverToClient++;
+		}
 
-        // Methods
-        if (msg.cdp_data?.method) {
-            const method = msg.cdp_data.method;
-            analysis.methods.set(method, (analysis.methods.get(method) || 0) + 1);
-        }
+		// Methods
+		if (msg.cdp_data?.method) {
+			const method = msg.cdp_data.method;
+			analysis.methods.set(method, (analysis.methods.get(method) || 0) + 1);
+		}
 
-        // Errors
-        if (msg.cdp_data?.error) {
-            analysis.errors.push({
-                index: idx,
-                id: msg.cdp_data.id,
-                error: msg.cdp_data.error
-            });
-        }
+		// Errors
+		if (msg.cdp_data?.error) {
+			analysis.errors.push({
+				index: idx,
+				id: msg.cdp_data.id,
+				error: msg.cdp_data.error,
+			});
+		}
 
-        // Sessions
-        if (msg.cdp_data?.sessionId) {
-            analysis.sessionIds.add(msg.cdp_data.sessionId);
-        }
+		// Sessions
+		if (msg.cdp_data?.sessionId) {
+			analysis.sessionIds.add(msg.cdp_data.sessionId);
+		}
 
-        // Timing
-        const timestamp = new Date(msg.timestamp);
-        if (!analysis.timing.first || timestamp < analysis.timing.first) {
-            analysis.timing.first = timestamp;
-        }
-        if (!analysis.timing.last || timestamp > analysis.timing.last) {
-            analysis.timing.last = timestamp;
-        }
-    });
+		// Timing
+		const timestamp = new Date(msg.timestamp);
+		if (!analysis.timing.first || timestamp < analysis.timing.first) {
+			analysis.timing.first = timestamp;
+		}
+		if (!analysis.timing.last || timestamp > analysis.timing.last) {
+			analysis.timing.last = timestamp;
+		}
+	});
 
-    if (analysis.timing.first && analysis.timing.last) {
-        analysis.timing.duration = (analysis.timing.last - analysis.timing.first) / 1000;
-    }
+	if (analysis.timing.first && analysis.timing.last) {
+		analysis.timing.duration =
+			(analysis.timing.last - analysis.timing.first) / 1000;
+	}
 
-    return analysis;
+	return analysis;
 }
 
 const nativeAnalysis = analyzeMessages(nativeMessages);
@@ -117,71 +126,75 @@ const bridgeAnalysis = analyzeMessages(bridgeMessages);
 
 // Find divergences
 function findDivergences() {
-    const divergences = [];
-    const maxLen = Math.min(nativeMessages.length, bridgeMessages.length);
+	const divergences = [];
+	const maxLen = Math.min(nativeMessages.length, bridgeMessages.length);
 
-    for (let i = 0; i < maxLen; i++) {
-        const n = nativeMessages[i];
-        const b = bridgeMessages[i];
+	for (let i = 0; i < maxLen; i++) {
+		const n = nativeMessages[i];
+		const b = bridgeMessages[i];
 
-        const nData = n.cdp_data;
-        const bData = b.cdp_data;
+		const nData = n.cdp_data;
+		const bData = b.cdp_data;
 
-        // Compare methods
-        if (nData.method !== bData.method) {
-            divergences.push({
-                index: i,
-                type: 'method_mismatch',
-                native: { method: nData.method },
-                bridge: { method: bData.method }
-            });
-        }
+		// Compare methods
+		if (nData.method !== bData.method) {
+			divergences.push({
+				index: i,
+				type: "method_mismatch",
+				native: { method: nData.method },
+				bridge: { method: bData.method },
+			});
+		}
 
-        // Compare results
-        if (nData.result && bData.result) {
-            const nResult = JSON.stringify(nData.result);
-            const bResult = JSON.stringify(bData.result);
-            if (nResult !== bResult) {
-                divergences.push({
-                    index: i,
-                    type: 'result_mismatch',
-                    native: nData,
-                    bridge: bData
-                });
-            }
-        }
+		// Compare results
+		if (nData.result && bData.result) {
+			const nResult = JSON.stringify(nData.result);
+			const bResult = JSON.stringify(bData.result);
+			if (nResult !== bResult) {
+				divergences.push({
+					index: i,
+					type: "result_mismatch",
+					native: nData,
+					bridge: bData,
+				});
+			}
+		}
 
-        // Check for missing responses
-        if ((nData.result && !bData.result) || (!nData.result && bData.result)) {
-            divergences.push({
-                index: i,
-                type: 'response_mismatch',
-                native: nData,
-                bridge: bData
-            });
-        }
-    }
+		// Check for missing responses
+		if ((nData.result && !bData.result) || (!nData.result && bData.result)) {
+			divergences.push({
+				index: i,
+				type: "response_mismatch",
+				native: nData,
+				bridge: bData,
+			});
+		}
+	}
 
-    return divergences;
+	return divergences;
 }
 
 const divergences = findDivergences();
 
 // Helper function to generate message HTML
 function generateMessageHTML(msg, idx, source, isDivergent) {
-    const isRequest = msg.direction === 'client_to_server';
-    const cdpData = msg.cdp_data;
-    const summary = cdpData.method ||
-        (cdpData.result ? `Response #${cdpData.id}` :
-            cdpData.error ? `Error #${cdpData.id}` : 'Event');
+	const isRequest = msg.direction === "client_to_server";
+	const cdpData = msg.cdp_data;
+	const summary =
+		cdpData.method ||
+		(cdpData.result
+			? `Response #${cdpData.id}`
+			: cdpData.error
+				? `Error #${cdpData.id}`
+				: "Event");
 
-    return `
-    <div class="message-item ${isDivergent ? 'divergence-marker' : ''}" data-index="${idx}" data-${source}="true">
+	return `
+    <div class="message-item ${isDivergent ? "divergence-marker" : ""}" data-index="${idx}" data-${source}="true">
         <div class="message-header" onclick="toggleMessage('${source}', ${idx})">
             <div class="message-index">#${idx + 1}</div>
-            <div class="message-time">${new Date(msg.timestamp).toISOString().split('T')[1].substring(0, 12)}</div>
-            <div class="message-direction ${isRequest ? 'client-to-server' : 'server-to-client'}">
-                ${isRequest ? '→' : '←'}
+            <div class="message-time">${new Date(msg.timestamp).toISOString().split("T")[1].substring(0, 12)}</div>
+            <div class="message-direction ${isRequest ? "client-to-server" : "server-to-client"}">
+                ${isRequest ? "→" : "←"}
             </div>
             <div class="message-summary">${summary}</div>
             <div class="expand-icon">▶</div>
@@ -456,7 +469,7 @@ const html = `<!DOCTYPE html>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Errors</span>
-                    <span class="stat-value ${nativeAnalysis.errors.length > 0 ? 'error' : ''}">${nativeAnalysis.errors.length}</span>
+                    <span class="stat-value ${nativeAnalysis.errors.length > 0 ? "error" : ""}">${nativeAnalysis.errors.length}</span>
                 </div>
             </div>
             
@@ -488,7 +501,7 @@ const html = `<!DOCTYPE html>
                 </div>
                 <div class="stat-row">
                     <span class="stat-label">Errors</span>
-                    <span class="stat-value ${bridgeAnalysis.errors.length > 0 ? 'error' : ''}">${bridgeAnalysis.errors.length}</span>
+                    <span class="stat-value ${bridgeAnalysis.errors.length > 0 ? "error" : ""}">${bridgeAnalysis.errors.length}</span>
                 </div>
             </div>
         </div>
@@ -509,31 +522,57 @@ const html = `<!DOCTYPE html>
                 <div class="timeline-column">
                     <div class="timeline-column-header native-header">Native Chrome</div>
                     <div class="messages-container" id="native-messages">
-                        ${nativeMessages.length === 0 ? '<div class="empty-message">No messages captured</div>' :
-        nativeMessages.map((msg, idx) => {
-            const isDivergent = divergences.some(d => d.index === idx);
-            return generateMessageHTML(msg, idx, 'native', isDivergent);
-        }).join('')}
+                        ${
+													nativeMessages.length === 0
+														? '<div class="empty-message">No messages captured</div>'
+														: nativeMessages
+																.map((msg, idx) => {
+																	const isDivergent = divergences.some(
+																		(d) => d.index === idx,
+																	);
+																	return generateMessageHTML(
+																		msg,
+																		idx,
+																		"native",
+																		isDivergent,
+																	);
+																})
+																.join("")
+												}
                     </div>
                 </div>
                 
                 <div class="timeline-column">
                     <div class="timeline-column-header bridge-header">Bridge Server</div>
                     <div class="messages-container" id="bridge-messages">
-                        ${bridgeMessages.length === 0 ? '<div class="empty-message">No messages captured</div>' :
-        bridgeMessages.map((msg, idx) => {
-            const isDivergent = divergences.some(d => d.index === idx);
-            return generateMessageHTML(msg, idx, 'bridge', isDivergent);
-        }).join('')}
+                        ${
+													bridgeMessages.length === 0
+														? '<div class="empty-message">No messages captured</div>'
+														: bridgeMessages
+																.map((msg, idx) => {
+																	const isDivergent = divergences.some(
+																		(d) => d.index === idx,
+																	);
+																	return generateMessageHTML(
+																		msg,
+																		idx,
+																		"bridge",
+																		isDivergent,
+																	);
+																})
+																.join("")
+												}
                     </div>
                 </div>
             </div>
         </div>
         
         <div class="stats-summary">
-            ${divergences.length > 0 ?
-        `<strong>Found ${divergences.length} divergences</strong> in the first ${Math.min(nativeMessages.length, bridgeMessages.length)} messages` :
-        'No divergences found in compared messages'}
+            ${
+							divergences.length > 0
+								? `<strong>Found ${divergences.length} divergences</strong> in the first ${Math.min(nativeMessages.length, bridgeMessages.length)} messages`
+								: "No divergences found in compared messages"
+						}
         </div>
     </div>
     
@@ -630,20 +669,24 @@ writeFileSync(outputFile, html);
 console.log("\n✅ Analysis complete!");
 console.log(`📄 Report saved to: ${outputFile}`);
 console.log("\n📊 Summary:");
-console.log(`   Native: ${nativeAnalysis.total} messages over ${nativeAnalysis.timing.duration.toFixed(3)}s`);
-console.log(`   Bridge: ${bridgeAnalysis.total} messages over ${bridgeAnalysis.timing.duration.toFixed(3)}s`);
+console.log(
+	`   Native: ${nativeAnalysis.total} messages over ${nativeAnalysis.timing.duration.toFixed(3)}s`,
+);
+console.log(
+	`   Bridge: ${bridgeAnalysis.total} messages over ${bridgeAnalysis.timing.duration.toFixed(3)}s`,
+);
 console.log(`   Divergences: ${divergences.length}`);
 
 // Output method comparison
 const nativeMethods = Array.from(nativeAnalysis.methods.keys());
 const bridgeMethods = Array.from(bridgeAnalysis.methods.keys());
-const missingInBridge = nativeMethods.filter(m => !bridgeMethods.includes(m));
+const missingInBridge = nativeMethods.filter((m) => !bridgeMethods.includes(m));
 
 if (missingInBridge.length > 0) {
-    console.log("\n⚠️  Methods missing in Bridge:");
-    for (const m of missingInBridge) {
-        console.log(`   - ${m}`);
-    }
+	console.log("\n⚠️  Methods missing in Bridge:");
+	for (const m of missingInBridge) {
+		console.log(`   - ${m}`);
+	}
 }
 
 console.log(`\nView the report by opening: ${outputFile}`);

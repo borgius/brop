@@ -68,7 +68,7 @@ class BROPPopup {
 				this.toggleService();
 			});
 		}
-		
+
 		// Wakeup service worker button
 		const wakeupBtn = document.getElementById("wakeup-service");
 		if (wakeupBtn) {
@@ -76,7 +76,7 @@ class BROPPopup {
 				this.wakeupServiceWorker();
 			});
 		}
-		
+
 		// Log type filter
 		const logTypeFilter = document.getElementById("log-type-filter");
 		if (logTypeFilter) {
@@ -149,7 +149,7 @@ class BROPPopup {
 			}
 			this.updateConsolePreview();
 		}, 5000);
-		
+
 		// Initial storage heartbeat update
 		this.updateStorageHeartbeat();
 	}
@@ -374,14 +374,14 @@ class BROPPopup {
 			console.warn("logs-container element not found");
 			return;
 		}
-		
+
 		// Apply filter
 		const logTypeFilter = document.getElementById("log-type-filter");
 		const filterValue = logTypeFilter ? logTypeFilter.value : "all";
-		
+
 		let filteredLogs = logs;
 		if (filterValue !== "all") {
-			filteredLogs = logs.filter(log => log.type === filterValue);
+			filteredLogs = logs.filter((log) => log.type === filterValue);
 		}
 
 		if (filteredLogs.length === 0) {
@@ -399,11 +399,11 @@ class BROPPopup {
 				const checkIcon = `<svg class="icon-check-small" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
       </svg>`;
-				
+
 				// Format the type badge with appropriate color
 				let badgeClass = "badge";
 				let badgeText = log.type || "BROP";
-				
+
 				if (log.type === "CDP") {
 					badgeClass += " badge-cdp";
 				} else if (log.type === "CDP_EVENT") {
@@ -474,7 +474,12 @@ class BROPPopup {
 		const duration = logData.duration ? `${logData.duration}ms` : "N/A";
 		const status = logData.error ? "ERROR" : "SUCCESS";
 		const logType = logData.type || "BROP";
-		const typeColor = logType === "CDP" ? "#2196F3" : logType === "CDP_EVENT" ? "#9C27B0" : "#4CAF50";
+		const typeColor =
+			logType === "CDP"
+				? "#2196F3"
+				: logType === "CDP_EVENT"
+					? "#9C27B0"
+					: "#4CAF50";
 
 		detailWindow.document.write(`
       <!DOCTYPE html>
@@ -583,7 +588,7 @@ class BROPPopup {
 						? `
         <div class="section">
           <h2>Parameters</h2>
-          <pre>${typeof logData.params === 'string' ? logData.params : JSON.stringify(logData.params, null, 2)}</pre>
+          <pre>${typeof logData.params === "string" ? logData.params : JSON.stringify(logData.params, null, 2)}</pre>
         </div>
         `
 						: ""
@@ -594,7 +599,7 @@ class BROPPopup {
 						? `
         <div class="section">
           <h2>Result</h2>
-          <pre>${typeof logData.result === 'string' ? logData.result : JSON.stringify(logData.result, null, 2)}</pre>
+          <pre>${typeof logData.result === "string" ? logData.result : JSON.stringify(logData.result, null, 2)}</pre>
         </div>
         `
 						: ""
@@ -1396,25 +1401,25 @@ ID: ${this.escapeHtml(log.id || "N/A")}</div>
 			console.error("Failed to clear logs:", error);
 		}
 	}
-	
+
 	async updateStorageHeartbeat() {
 		try {
 			// Get storage heartbeat data
 			const data = await chrome.storage.local.get([
-				'heartbeat', 
-				'heartbeatCounter',
-				'extensionActive',
-				'connectionStatus'
+				"heartbeat",
+				"heartbeatCounter",
+				"extensionActive",
+				"connectionStatus",
 			]);
-			
+
 			// Update heartbeat count
-			const heartbeatCountEl = document.getElementById('heartbeat-count');
+			const heartbeatCountEl = document.getElementById("heartbeat-count");
 			if (heartbeatCountEl && data.heartbeatCounter !== undefined) {
 				heartbeatCountEl.textContent = data.heartbeatCounter;
 			}
-			
+
 			// Update last heartbeat time
-			const lastHeartbeatEl = document.getElementById('last-heartbeat');
+			const lastHeartbeatEl = document.getElementById("last-heartbeat");
 			if (lastHeartbeatEl && data.heartbeat) {
 				const secondsAgo = Math.floor((Date.now() - data.heartbeat) / 1000);
 				if (secondsAgo < 60) {
@@ -1423,43 +1428,43 @@ ID: ${this.escapeHtml(log.id || "N/A")}</div>
 					const minutesAgo = Math.floor(secondsAgo / 60);
 					lastHeartbeatEl.textContent = `${minutesAgo}m ago`;
 				} else {
-					lastHeartbeatEl.textContent = 'Inactive';
+					lastHeartbeatEl.textContent = "Inactive";
 				}
 			}
 		} catch (error) {
-			console.error('Failed to update storage heartbeat:', error);
+			console.error("Failed to update storage heartbeat:", error);
 		}
 	}
-	
+
 	async wakeupServiceWorker() {
 		try {
 			// Send wakeup request via storage
 			await chrome.storage.local.set({
 				wakeupRequest: Date.now(),
-				wakeupSource: 'popup'
+				wakeupSource: "popup",
 			});
-			
+
 			// Also try to send a message to ensure it's awake
 			const response = await chrome.runtime.sendMessage({ type: "GET_STATUS" });
-			
+
 			// Update UI
-			const wakeupBtn = document.getElementById('wakeup-service');
+			const wakeupBtn = document.getElementById("wakeup-service");
 			if (wakeupBtn) {
-				wakeupBtn.textContent = 'Service Worker Active!';
-				wakeupBtn.style.backgroundColor = 'var(--success)';
-				
+				wakeupBtn.textContent = "Service Worker Active!";
+				wakeupBtn.style.backgroundColor = "var(--success)";
+
 				// Reset button after 2 seconds
 				setTimeout(() => {
-					wakeupBtn.textContent = 'Wake Up Service Worker';
-					wakeupBtn.style.backgroundColor = '';
+					wakeupBtn.textContent = "Wake Up Service Worker";
+					wakeupBtn.style.backgroundColor = "";
 				}, 2000);
 			}
-			
+
 			// Update status immediately
 			await this.updateStatus();
 			await this.updateStorageHeartbeat();
 		} catch (error) {
-			console.error('Failed to wake up service worker:', error);
+			console.error("Failed to wake up service worker:", error);
 		}
 	}
 }

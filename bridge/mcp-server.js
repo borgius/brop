@@ -148,7 +148,9 @@ class BROPMCPServer {
 	 */
 	async connectToCDPServer() {
 		return new Promise((resolve, reject) => {
-			const ws = new WebSocket("ws://localhost:9222/devtools/browser/mcp-client");
+			const ws = new WebSocket(
+				"ws://localhost:9222/devtools/browser/mcp-client",
+			);
 
 			ws.on("open", () => {
 				this.log("Connected to CDP server as relay client");
@@ -1061,7 +1063,10 @@ server.tool(
 	"Retrieve console logs captured since capture was started (requires active capture session)",
 	{
 		tabId: z.number().describe("Tab ID to get logs from"),
-		limit: z.number().optional().describe("Maximum logs to return (default: all captured)"),
+		limit: z
+			.number()
+			.optional()
+			.describe("Maximum logs to return (default: all captured)"),
 		level: z
 			.enum(["log", "warn", "error", "info", "debug"])
 			.optional()
@@ -1165,8 +1170,14 @@ server.tool(
 	"cdp_execute_command",
 	"Execute a Chrome DevTools Protocol command",
 	{
-		method: z.string().describe("CDP method to execute (e.g., 'Page.navigate')"),
-		params: z.object({}).passthrough().optional().describe("Parameters for the CDP method"),
+		method: z
+			.string()
+			.describe("CDP method to execute (e.g., 'Page.navigate')"),
+		params: z
+			.object({})
+			.passthrough()
+			.optional()
+			.describe("Parameters for the CDP method"),
 	},
 	async ({ method, params }) => {
 		try {
@@ -1196,26 +1207,36 @@ server.tool(
 	"cdp_create_page",
 	"Create a new page using CDP and attach to it",
 	{
-		url: z.string().optional().describe("URL to navigate to (defaults to about:blank)"),
+		url: z
+			.string()
+			.optional()
+			.describe("URL to navigate to (defaults to about:blank)"),
 	},
 	async ({ url }) => {
 		try {
 			// Create a new target
-			const createResult = await bropServer.executeCDPCommand("Target.createTarget", {
-				url: url || "about:blank",
-			});
+			const createResult = await bropServer.executeCDPCommand(
+				"Target.createTarget",
+				{
+					url: url || "about:blank",
+				},
+			);
 
 			// Wait a bit for session to be established
-			await new Promise(resolve => setTimeout(resolve, 500));
+			await new Promise((resolve) => setTimeout(resolve, 500));
 
 			return {
 				content: [
 					{
 						type: "text",
-						text: JSON.stringify({
-							targetId: createResult.targetId,
-							sessionId: bropServer.cdpSessionId,
-						}, null, 2),
+						text: JSON.stringify(
+							{
+								targetId: createResult.targetId,
+								sessionId: bropServer.cdpSessionId,
+							},
+							null,
+							2,
+						),
 					},
 				],
 			};
@@ -1237,7 +1258,10 @@ server.tool(
 	"Navigate to a URL using CDP",
 	{
 		url: z.string().describe("URL to navigate to"),
-		waitUntil: z.enum(["load", "domcontentloaded", "networkidle0", "networkidle2"]).optional().describe("When to consider navigation complete"),
+		waitUntil: z
+			.enum(["load", "domcontentloaded", "networkidle0", "networkidle2"])
+			.optional()
+			.describe("When to consider navigation complete"),
 	},
 	async ({ url, waitUntil }) => {
 		try {
@@ -1271,7 +1295,10 @@ server.tool(
 	"Evaluate JavaScript in the page using CDP",
 	{
 		expression: z.string().describe("JavaScript expression to evaluate"),
-		awaitPromise: z.boolean().optional().describe("Whether to await promise resolution"),
+		awaitPromise: z
+			.boolean()
+			.optional()
+			.describe("Whether to await promise resolution"),
 	},
 	async ({ expression, awaitPromise }) => {
 		try {

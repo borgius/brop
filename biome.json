@@ -7,7 +7,9 @@
 			"build/**",
 			"*.min.js",
 			"readability.js",
-			"turndown.js"
+			"turndown.js",
+			".mastra/**",
+			"brop-agent/**"
 		]
 	},
 	"linter": {
@@ -18,7 +20,7 @@
 				"noParameterAssign": "error"
 			},
 			"complexity": {
-				"noForEach": "error"
+				"noForEach": "off"
 			},
 			"suspicious": {
 				"noAssignInExpressions": "warn"

@@ -1,12 +1,12 @@
-import { anthropic } from '@ai-sdk/anthropic';
-import { Agent } from '@mastra/core/agent';
-import { Memory } from '@mastra/memory';
-import { LibSQLStore } from '@mastra/libsql';
-import { weatherTool } from '../tools/weather-tool';
+import { anthropic } from "@ai-sdk/anthropic";
+import { Agent } from "@mastra/core/agent";
+import { LibSQLStore } from "@mastra/libsql";
+import { Memory } from "@mastra/memory";
+import { weatherTool } from "../tools/weather-tool";
 
 export const weatherAgent = new Agent({
-  name: 'Weather Agent',
-  instructions: `
+	name: "Weather Agent",
+	instructions: `
       You are a helpful weather assistant that provides accurate weather information.
 
       Your primary function is to help users get weather details for specific locations. When responding:
@@ -18,11 +18,11 @@ export const weatherAgent = new Agent({
 
       Use the weatherTool to fetch current weather data.
 `,
-  model: anthropic('claude-3-5-sonnet-20241022'),
-  tools: { weatherTool },
-  memory: new Memory({
-    storage: new LibSQLStore({
-      url: 'file:../mastra.db', // path is relative to the .mastra/output directory
-    }),
-  }),
+	model: anthropic("claude-3-5-sonnet-20241022"),
+	tools: { weatherTool },
+	memory: new Memory({
+		storage: new LibSQLStore({
+			url: "file:../mastra.db", // path is relative to the .mastra/output directory
+		}),
+	}),
 });

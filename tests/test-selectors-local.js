@@ -3,9 +3,9 @@
  * Test CSS selector extraction with a local HTML file
  */
 
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import WebSocket from 'ws';
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import WebSocket from "ws";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,19 +19,19 @@ class BROPTestClient {
 
 	async connect() {
 		return new Promise((resolve, reject) => {
-			this.ws = new WebSocket('ws://localhost:9225?name=local_selector_test');
+			this.ws = new WebSocket("ws://localhost:9225?name=local_selector_test");
 
-			this.ws.on('open', () => {
-				console.log('✅ Connected to BROP server');
+			this.ws.on("open", () => {
+				console.log("✅ Connected to BROP server");
 				resolve();
 			});
 
-			this.ws.on('error', (error) => {
-				console.error('❌ WebSocket error:', error.message);
+			this.ws.on("error", (error) => {
+				console.error("❌ WebSocket error:", error.message);
 				reject(error);
 			});
 
-			this.ws.on('message', (data) => {
+			this.ws.on("message", (data) => {
 				try {
 					const response = JSON.parse(data.toString());
 					const pending = this.pendingRequests.get(response.id);
@@ -44,7 +44,7 @@ class BROPTestClient {
 						}
 					}
 				} catch (error) {
-					console.error('Error parsing response:', error);
+					console.error("Error parsing response:", error);
 				}
 			});
 		});
@@ -62,7 +62,7 @@ class BROPTestClient {
 			setTimeout(() => {
 				if (this.pendingRequests.has(id)) {
 					this.pendingRequests.delete(id);
-					reject(new Error('Request timeout'));
+					reject(new Error("Request timeout"));
 				}
 			}, 30000);
 		});
@@ -76,61 +76,68 @@ class BROPTestClient {
 }
 
 async function runTests() {
-	console.log('🧪 Testing CSS Selector Extraction with Local HTML File');
-	console.log(`=${'='.repeat(60)}`);
+	console.log("🧪 Testing CSS Selector Extraction with Local HTML File");
+	console.log(`=${"=".repeat(60)}`);
 
 	const client = new BROPTestClient();
 
 	try {
 		// Connect to BROP server
 		await client.connect();
-		console.log('');
+		console.log("");
 
 		// Create tab with local test file
-		const testFilePath = join(dirname(__dirname), 'test/test-selector-page.html');
+		const testFilePath = join(
+			dirname(__dirname),
+			"test/test-selector-page.html",
+		);
 		const testFileUrl = `file://${testFilePath}`;
 
-		console.log('📋 Creating test tab with local HTML file...');
+		console.log("📋 Creating test tab with local HTML file...");
 		console.log(`   URL: ${testFileUrl}`);
 
-		const tab = await client.sendCommand('create_tab', {
+		const tab = await client.sendCommand("create_tab", {
 			url: testFileUrl,
-			active: true
+			active: true,
 		});
 		console.log(`✅ Created tab ${tab.tabId}: ${tab.title}`);
-		console.log('');
+		console.log("");
 
 		// Wait for page to load
-		await new Promise(resolve => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, 2000));
 
 		// Test with CSS selectors enabled
-		console.log('🧪 Testing Markdown extraction WITH CSS selectors');
+		console.log("🧪 Testing Markdown extraction WITH CSS selectors");
 		try {
-			const result = await client.sendCommand('get_simplified_dom', {
+			const result = await client.sendCommand("get_simplified_dom", {
 				tabId: tab.tabId,
-				format: 'markdown',
+				format: "markdown",
 				enableDetailedResponse: false,
-				includeSelectors: true
+				includeSelectors: true,
 			});
 
-			console.log('✅ Extraction successful');
+			console.log("✅ Extraction successful");
 			console.log(`   Title: ${result.title}`);
 			console.log(`   Length: ${result.markdown?.length || 0} characters`);
 
 			// Extract and analyze CSS selectors
 			const selectorMatches = result.markdown?.match(/<!--([^>]+)-->/g) || [];
-			const selectors = selectorMatches.map(match => match.slice(4, -3));
+			const selectors = selectorMatches.map((match) => match.slice(4, -3));
 
 			console.log("\n📊 CSS Selector Analysis:");
 			console.log(`   Total selectors found: ${selectors.length}`);
 
 			// Categorize selectors
-			const idSelectors = selectors.filter(s => s.startsWith('#'));
-			const classSelectors = selectors.filter(s => s.startsWith('.'));
-			const ariaSelectors = selectors.filter(s => s.includes('[aria-label='));
-			const testIdSelectors = selectors.filter(s => s.includes('[data-testid='));
-			const nameSelectors = selectors.filter(s => s.includes('[name='));
-			const containsSelectors = selectors.filter(s => s.includes(':contains('));
+			const idSelectors = selectors.filter((s) => s.startsWith("#"));
+			const classSelectors = selectors.filter((s) => s.startsWith("."));
+			const ariaSelectors = selectors.filter((s) => s.includes("[aria-label="));
+			const testIdSelectors = selectors.filter((s) =>
+				s.includes("[data-testid="),
+			);
+			const nameSelectors = selectors.filter((s) => s.includes("[name="));
+			const containsSelectors = selectors.filter((s) =>
+				s.includes(":contains("),
+			);
 
 			console.log(`   ID selectors: ${idSelectors.length}`);
 			console.log(`   Class selectors: ${classSelectors.length}`);
@@ -140,7 +147,7 @@ async function runTests() {
 			console.log(`   Contains selectors: ${containsSelectors.length}`);
 
 			// Show examples of each type
-			console.log('\n📝 Selector Examples:');
+			console.log("\n📝 Selector Examples:");
 			if (idSelectors.length > 0) {
 				console.log(`   ID: ${idSelectors[0]}`);
 			}
@@ -155,33 +162,33 @@ async function runTests() {
 			}
 
 			// Show sample markdown with selectors
-			console.log('\n📄 Sample Markdown Output:');
-			const lines = result.markdown?.split('\n') || [];
-			const linesWithSelectors = lines.filter(line => line.includes('<!--'));
+			console.log("\n📄 Sample Markdown Output:");
+			const lines = result.markdown?.split("\n") || [];
+			const linesWithSelectors = lines.filter((line) => line.includes("<!--"));
 			for (const line of linesWithSelectors.slice(0, 5)) {
-				console.log(`   ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
+				console.log(
+					`   ${line.substring(0, 100)}${line.length > 100 ? "..." : ""}`,
+				);
 			}
-
 		} catch (error) {
-			console.error('❌ Test failed:', error.message);
+			console.error("❌ Test failed:", error.message);
 		}
 
 		// Clean up
-		console.log('\n🧹 Cleaning up...');
-		await client.sendCommand('close_tab', { tabId: tab.tabId });
-		console.log('✅ Test tab closed');
-
+		console.log("\n🧹 Cleaning up...");
+		await client.sendCommand("close_tab", { tabId: tab.tabId });
+		console.log("✅ Test tab closed");
 	} catch (error) {
-		console.error('\n❌ Test suite failed:', error.message);
+		console.error("\n❌ Test suite failed:", error.message);
 	} finally {
 		client.disconnect();
-		console.log('\n✅ Test completed');
+		console.log("\n✅ Test completed");
 	}
 }
 
 // Run tests
-console.log('');
-runTests().catch(error => {
-	console.error('Fatal error:', error);
+console.log("");
+runTests().catch((error) => {
+	console.error("Fatal error:", error);
 	process.exit(1);
 });

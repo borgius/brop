@@ -3,9 +3,9 @@
  * Test evaluate_js behavior with file:// URLs
  */
 
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import WebSocket from 'ws';
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import WebSocket from "ws";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -19,19 +19,19 @@ class BROPTestClient {
 
 	async connect() {
 		return new Promise((resolve, reject) => {
-			this.ws = new WebSocket('ws://localhost:9225?name=file_url_test');
+			this.ws = new WebSocket("ws://localhost:9225?name=file_url_test");
 
-			this.ws.on('open', () => {
-				console.log('✅ Connected to BROP server');
+			this.ws.on("open", () => {
+				console.log("✅ Connected to BROP server");
 				resolve();
 			});
 
-			this.ws.on('error', (error) => {
-				console.error('❌ WebSocket error:', error.message);
+			this.ws.on("error", (error) => {
+				console.error("❌ WebSocket error:", error.message);
 				reject(error);
 			});
 
-			this.ws.on('message', (data) => {
+			this.ws.on("message", (data) => {
 				try {
 					const response = JSON.parse(data.toString());
 					const pending = this.pendingRequests.get(response.id);
@@ -44,7 +44,7 @@ class BROPTestClient {
 						}
 					}
 				} catch (error) {
-					console.error('Error parsing response:', error);
+					console.error("Error parsing response:", error);
 				}
 			});
 		});
@@ -62,7 +62,7 @@ class BROPTestClient {
 			setTimeout(() => {
 				if (this.pendingRequests.has(id)) {
 					this.pendingRequests.delete(id);
-					reject(new Error('Request timeout'));
+					reject(new Error("Request timeout"));
 				}
 			}, 10000);
 		});
@@ -76,9 +76,9 @@ class BROPTestClient {
 }
 
 async function testFileUrls() {
-	console.log('🧪 Testing evaluate_js with file:// URLs');
-	console.log('='.repeat(60));
-	console.log('\nTesting behavior and limitations with local files.\n');
+	console.log("🧪 Testing evaluate_js with file:// URLs");
+	console.log("=".repeat(60));
+	console.log("\nTesting behavior and limitations with local files.\n");
 
 	const client = new BROPTestClient();
 
@@ -86,83 +86,86 @@ async function testFileUrls() {
 		await client.connect();
 
 		// Create test tab with file URL
-		const testFilePath = join(dirname(__dirname), 'tests/test-selector-page.html');
+		const testFilePath = join(
+			dirname(__dirname),
+			"tests/test-selector-page.html",
+		);
 		const testFileUrl = `file://${testFilePath}`;
-		
-		const tab = await client.sendCommand('create_tab', {
+
+		const tab = await client.sendCommand("create_tab", {
 			url: testFileUrl,
-			active: true
+			active: true,
 		});
 		console.log(`✅ Created tab ${tab.tabId} with file:// URL`);
-		
+
 		// Wait for page to load
-		await new Promise(resolve => setTimeout(resolve, 2000));
+		await new Promise((resolve) => setTimeout(resolve, 2000));
 
 		// Test different types of code to see what works and what doesn't
 		const tests = [
 			{
-				name: 'Simple expression',
-				code: '1 + 1'
+				name: "Simple expression",
+				code: "1 + 1",
 			},
 			{
-				name: 'DOM property access',
-				code: 'document.title'
+				name: "DOM property access",
+				code: "document.title",
 			},
 			{
-				name: 'DOM query',
-				code: "document.querySelectorAll('input').length"
+				name: "DOM query",
+				code: "document.querySelectorAll('input').length",
 			},
 			{
-				name: 'Variable and return',
-				code: 'const x = 5; return x * 2;'
+				name: "Variable and return",
+				code: "const x = 5; return x * 2;",
 			},
 			{
-				name: 'Object literal',
-				code: '({ name: "test", value: 123 })'
+				name: "Object literal",
+				code: '({ name: "test", value: 123 })',
 			},
 			{
-				name: 'Array creation',
-				code: '[1, 2, 3, 4, 5]'
+				name: "Array creation",
+				code: "[1, 2, 3, 4, 5]",
 			},
 			{
-				name: 'Function definition',
-				code: 'function test() { return "hello"; }'
+				name: "Function definition",
+				code: 'function test() { return "hello"; }',
 			},
 			{
-				name: 'Arrow function',
-				code: '() => "hello"'
+				name: "Arrow function",
+				code: '() => "hello"',
 			},
 			{
-				name: 'Window object',
-				code: 'window'
+				name: "Window object",
+				code: "window",
 			},
 			{
-				name: 'Document object',
-				code: 'document'
+				name: "Document object",
+				code: "document",
 			},
 			{
-				name: 'Invalid syntax',
-				code: 'this is not valid'
+				name: "Invalid syntax",
+				code: "this is not valid",
 			},
 			{
-				name: 'Throw error',
-				code: 'throw new Error("test")'
-			}
+				name: "Throw error",
+				code: 'throw new Error("test")',
+			},
 		];
 
-		console.log('\n📊 Testing various code patterns:\n');
-		
+		console.log("\n📊 Testing various code patterns:\n");
+
 		for (const test of tests) {
 			console.log(`🧪 ${test.name}`);
 			console.log(`   Code: ${test.code}`);
-			
+
 			try {
-				const result = await client.sendCommand('evaluate_js', {
+				const result = await client.sendCommand("evaluate_js", {
 					tabId: tab.tabId,
-					code: test.code
+					code: test.code,
 				});
-				
-				console.log(`   ✅ Success`);
+
+				console.log("   ✅ Success");
 				console.log(`   Result: ${JSON.stringify(result.result)}`);
 				console.log(`   Type: ${result.type}`);
 				if (result.limited) {
@@ -171,20 +174,21 @@ async function testFileUrls() {
 			} catch (error) {
 				console.log(`   ❌ Error: ${error.message}`);
 			}
-			console.log('');
+			console.log("");
 		}
 
 		// Clean up
-		await client.sendCommand('close_tab', { tabId: tab.tabId });
-		console.log('✅ Test completed');
+		await client.sendCommand("close_tab", { tabId: tab.tabId });
+		console.log("✅ Test completed");
 
-		console.log('\n📊 Summary:');
-		console.log('   The behavior with file:// URLs appears to be inconsistent.');
-		console.log('   Chrome may allow some debugger operations but not others.');
-		console.log('   For reliable JavaScript execution, use HTTP/HTTPS URLs.');
-
+		console.log("\n📊 Summary:");
+		console.log(
+			"   The behavior with file:// URLs appears to be inconsistent.",
+		);
+		console.log("   Chrome may allow some debugger operations but not others.");
+		console.log("   For reliable JavaScript execution, use HTTP/HTTPS URLs.");
 	} catch (error) {
-		console.error('\n❌ Test suite failed:', error.message);
+		console.error("\n❌ Test suite failed:", error.message);
 	} finally {
 		client.disconnect();
 	}
@@ -193,7 +197,7 @@ async function testFileUrls() {
 // Run tests
 testFileUrls()
 	.then(() => process.exit(0))
-	.catch(error => {
-		console.error('Fatal error:', error);
+	.catch((error) => {
+		console.error("Fatal error:", error);
 		process.exit(1);
 	});

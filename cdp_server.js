@@ -9,13 +9,13 @@ class CDPServer {
 		this.debuggerSessions = new Map(); // tabId -> sessionInfo
 		this.connectionToTab = new Map(); // connectionId -> tabId
 		this.tabToConnection = new Map(); // tabId -> connectionId
-		
+
 		// Generate a stable browser target ID
 		this.browserTargetId = this.generateBrowserTargetId();
-		
+
 		// Default browser context ID (represents the main browser profile)
 		this.defaultBrowserContextId = this.generateBrowserContextId();
-		
+
 		// Track created browser contexts
 		this.browserContexts = new Map();
 		this.browserContexts.set(this.defaultBrowserContextId, { isDefault: true });
@@ -23,37 +23,47 @@ class CDPServer {
 		this.setupCDPEventForwarding();
 		console.log("🎭 CDP Server initialized using Chrome Extension APIs");
 	}
-	
+
 	generateBrowserTargetId() {
 		// Generate a UUID-like browser target ID
 		const array = new Uint8Array(16);
 		crypto.getRandomValues(array);
-		const hex = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+		const hex = Array.from(array, (byte) =>
+			byte.toString(16).padStart(2, "0"),
+		).join("");
 		return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 	}
-	
+
 	generateBrowserContextId() {
 		// Generate a browser context ID in uppercase hex format like native Chrome
 		const array = new Uint8Array(16);
 		crypto.getRandomValues(array);
-		return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+		return Array.from(array, (byte) => byte.toString(16).padStart(2, "0"))
+			.join("")
+			.toUpperCase();
 	}
 
 	setupCDPEventForwarding() {
 		// Forward CDP events from debugger to bridge
 		chrome.debugger.onEvent.addListener((source, method, params) => {
-			console.log(`🎭 CDP Event: ${method} from tab ${source.tabId}, frame ${source.frameId || 'main'}`);
+			console.log(
+				`🎭 CDP Event: ${method} from tab ${source.tabId}, frame ${source.frameId || "main"}`,
+			);
 
 			// Forward the event with proper targetId (frameId)
 			if (this.onEventCallback) {
 				const connectionId = this.tabToConnection.get(source.tabId);
-				
+
 				// Look up the targetId from our session mapping
 				const sessionInfo = this.debuggerSessions.get(source.tabId);
-				const targetId = sessionInfo ? sessionInfo.targetId : source.tabId.toString();
-				
-				console.log(`🎭 Event ${method} - using targetId: ${targetId} for tab ${source.tabId}`);
-				
+				const targetId = sessionInfo
+					? sessionInfo.targetId
+					: source.tabId.toString();
+
+				console.log(
+					`🎭 Event ${method} - using targetId: ${targetId} for tab ${source.tabId}`,
+				);
+
 				this.onEventCallback({
 					type: "cdp_event",
 					method: method,
@@ -127,7 +137,7 @@ class CDPServer {
 				const result = await this.handleBrowserTargetCommand(
 					method,
 					params || {},
-					connectionId
+					connectionId,
 				);
 
 				sendResponseCallback({
@@ -145,7 +155,7 @@ class CDPServer {
 						this.connectionToTab.set(connectionId, tabId);
 						this.tabToConnection.set(tabId, connectionId);
 					}
-					
+
 					// Use specified tab
 					if (!this.attachedTabs.has(tabId)) {
 						console.log(`🎭 Attaching debugger to tab ${tabId}`);
@@ -154,11 +164,18 @@ class CDPServer {
 							this.attachedTabs.add(tabId);
 							console.log(`✅ Successfully attached to tab ${tabId}`);
 						} catch (error) {
-							if (error.message.includes("Another debugger is already attached")) {
-								console.log(`🎭 Tab ${tabId} already has debugger attached - using existing connection`);
+							if (
+								error.message.includes("Another debugger is already attached")
+							) {
+								console.log(
+									`🎭 Tab ${tabId} already has debugger attached - using existing connection`,
+								);
 								this.attachedTabs.add(tabId);
 							} else {
-								console.error(`🎭 Failed to attach to tab ${tabId}:`, error.message);
+								console.error(
+									`🎭 Failed to attach to tab ${tabId}:`,
+									error.message,
+								);
 								throw error;
 							}
 						}
@@ -167,10 +184,10 @@ class CDPServer {
 						if (!this.debuggerSessions.has(tabId)) {
 							const sessionId = `session_${tabId}_${Date.now()}`;
 							const targetId = tabId.toString();
-							this.debuggerSessions.set(tabId, { 
-								sessionId, 
+							this.debuggerSessions.set(tabId, {
+								sessionId,
 								targetId,
-								browserContextId: this.defaultBrowserContextId
+								browserContextId: this.defaultBrowserContextId,
 							});
 							console.log(
 								`🎭 Created session mapping: ${sessionId} -> ${targetId}`,
@@ -211,11 +228,18 @@ class CDPServer {
 							this.attachedTabs.add(targetTab.id);
 							console.log(`✅ Successfully attached to tab ${targetTab.id}`);
 						} catch (error) {
-							if (error.message.includes("Another debugger is already attached")) {
-								console.log(`🎭 Tab ${targetTab.id} already has debugger attached - using existing connection`);
+							if (
+								error.message.includes("Another debugger is already attached")
+							) {
+								console.log(
+									`🎭 Tab ${targetTab.id} already has debugger attached - using existing connection`,
+								);
 								this.attachedTabs.add(targetTab.id);
 							} else {
-								console.error(`🎭 Failed to attach to tab ${targetTab.id}:`, error.message);
+								console.error(
+									`🎭 Failed to attach to tab ${targetTab.id}:`,
+									error.message,
+								);
 								throw error;
 							}
 						}
@@ -224,10 +248,10 @@ class CDPServer {
 						if (!this.debuggerSessions.has(targetTab.id)) {
 							const sessionId = `session_${targetTab.id}_${Date.now()}`;
 							const targetId = targetTab.id.toString();
-							this.debuggerSessions.set(targetTab.id, { 
-								sessionId, 
+							this.debuggerSessions.set(targetTab.id, {
+								sessionId,
 								targetId,
-								browserContextId: this.defaultBrowserContextId
+								browserContextId: this.defaultBrowserContextId,
 							});
 							console.log(
 								`🎭 Created session mapping: ${sessionId} -> ${targetId}`,
@@ -361,17 +385,17 @@ class CDPServer {
 	async browserGetVersion() {
 		// Get user agent (contains Chrome version)
 		const userAgent = navigator.userAgent;
-		
+
 		// Extract Chrome version from user agent
 		const chromeMatch = userAgent.match(/Chrome\/([0-9.]+)/);
-		const chromeVersion = chromeMatch ? chromeMatch[1] : '138.0.7204.15';
-		
+		const chromeVersion = chromeMatch ? chromeMatch[1] : "138.0.7204.15";
+
 		return {
 			protocolVersion: "1.3",
 			product: `Chrome/${chromeVersion}`,
 			revision: "@9f1120d029eadbc8ecc5c3d9b298c16d08aabf9f", // Hardcoded revision
 			userAgent: userAgent,
-			jsVersion: "13.8.258.9" // Hardcoded jsVersion
+			jsVersion: "13.8.258.9", // Hardcoded jsVersion
 		};
 	}
 
@@ -408,7 +432,7 @@ class CDPServer {
 	async browserGetWindowForTarget(params) {
 		// Get the actual current window
 		const window = await chrome.windows.getCurrent();
-		
+
 		return {
 			windowId: window.id,
 			bounds: {
@@ -416,15 +440,15 @@ class CDPServer {
 				top: window.top || 0,
 				width: window.width || 1280,
 				height: window.height || 720,
-				windowState: window.state || "normal"
-			}
+				windowState: window.state || "normal",
+			},
 		};
 	}
 
 	// Browser.setWindowBounds implementation
 	async browserSetWindowBounds(params) {
 		const { windowId, bounds } = params;
-		
+
 		// Update the window bounds
 		const updateInfo = {};
 		if (bounds.left !== undefined) updateInfo.left = bounds.left;
@@ -432,9 +456,9 @@ class CDPServer {
 		if (bounds.width !== undefined) updateInfo.width = bounds.width;
 		if (bounds.height !== undefined) updateInfo.height = bounds.height;
 		if (bounds.windowState !== undefined) updateInfo.state = bounds.windowState;
-		
+
 		await chrome.windows.update(windowId, updateInfo);
-		
+
 		return {};
 	}
 
@@ -464,7 +488,8 @@ class CDPServer {
 		const width = params.width;
 		const height = params.height;
 		const newWindow = params.newWindow;
-		const browserContextId = params.browserContextId || this.defaultBrowserContextId;
+		const browserContextId =
+			params.browserContextId || this.defaultBrowserContextId;
 
 		let tab;
 		if (newWindow) {
@@ -498,76 +523,90 @@ class CDPServer {
 
 		// Send Page.getFrameTree with a very large ID to get the real frame ID
 		const largeRequestId = 1000000 + Math.floor(Math.random() * 1000000);
-		
+
 		// Create a promise to wait for the response
 		const frameTreePromise = new Promise((resolve) => {
-			this.pendingFrameTreeRequests = this.pendingFrameTreeRequests || new Map();
-			this.pendingFrameTreeRequests.set(largeRequestId, { resolve, tabId: tab.id, connectionId });
+			this.pendingFrameTreeRequests =
+				this.pendingFrameTreeRequests || new Map();
+			this.pendingFrameTreeRequests.set(largeRequestId, {
+				resolve,
+				tabId: tab.id,
+				connectionId,
+			});
 		});
 
 		// Send Page.getFrameTree to get the real frame ID
-		await chrome.debugger.sendCommand({ tabId: tab.id }, "Page.getFrameTree", {}, (result) => {
-			if (chrome.runtime.lastError) {
-				console.error("Failed to get frame tree:", chrome.runtime.lastError);
-				return;
-			}
-			
-			// Process the result immediately
-			const frameId = result.frameTree.frame.id;
-			const sessionId = this.generateSessionId();
-			
-			console.log(`🎭 Got frame ID ${frameId} for tab ${tab.id}, generating Target.attachedToTarget`);
-			
-			// Store the session mapping
-			this.debuggerSessions.set(tab.id, {
-				sessionId,
-				targetId: frameId,
-				browserContextId: browserContextId
-			});
-			
-			// Send Target.attachedToTarget event
-			if (this.onEventCallback) {
-				this.onEventCallback({
-					type: "cdp_event",
-					method: "Target.attachedToTarget",
-					params: {
-						sessionId: sessionId,
-						targetInfo: {
-							targetId: frameId,
-							type: "page",
-							title: "",
-							url: url,
-							attached: true,
-							canAccessOpener: false,
-							browserContextId: browserContextId
-						},
-						waitingForDebugger: true
-					},
-					connectionId: connectionId
+		await chrome.debugger.sendCommand(
+			{ tabId: tab.id },
+			"Page.getFrameTree",
+			{},
+			(result) => {
+				if (chrome.runtime.lastError) {
+					console.error("Failed to get frame tree:", chrome.runtime.lastError);
+					return;
+				}
+
+				// Process the result immediately
+				const frameId = result.frameTree.frame.id;
+				const sessionId = this.generateSessionId();
+
+				console.log(
+					`🎭 Got frame ID ${frameId} for tab ${tab.id}, generating Target.attachedToTarget`,
+				);
+
+				// Store the session mapping
+				this.debuggerSessions.set(tab.id, {
+					sessionId,
+					targetId: frameId,
+					browserContextId: browserContextId,
 				});
-			}
-			
-			// Resolve with frame ID
-			if (this.pendingFrameTreeRequests?.has(largeRequestId)) {
-				const pending = this.pendingFrameTreeRequests.get(largeRequestId);
-				this.pendingFrameTreeRequests.delete(largeRequestId);
-				pending.resolve(frameId);
-			}
-		});
+
+				// Send Target.attachedToTarget event
+				if (this.onEventCallback) {
+					this.onEventCallback({
+						type: "cdp_event",
+						method: "Target.attachedToTarget",
+						params: {
+							sessionId: sessionId,
+							targetInfo: {
+								targetId: frameId,
+								type: "page",
+								title: "",
+								url: url,
+								attached: true,
+								canAccessOpener: false,
+								browserContextId: browserContextId,
+							},
+							waitingForDebugger: true,
+						},
+						connectionId: connectionId,
+					});
+				}
+
+				// Resolve with frame ID
+				if (this.pendingFrameTreeRequests?.has(largeRequestId)) {
+					const pending = this.pendingFrameTreeRequests.get(largeRequestId);
+					this.pendingFrameTreeRequests.delete(largeRequestId);
+					pending.resolve(frameId);
+				}
+			},
+		);
 
 		// Wait for frame ID
 		const frameId = await frameTreePromise;
-		
+
 		console.log(`🎭 Created target: frameId ${frameId} (tab ${tab.id})`);
 
 		return { targetId: frameId };
 	}
-	
+
 	generateSessionId() {
 		// Generate a session ID in the same format as CDP
 		const array = new Uint8Array(16);
 		crypto.getRandomValues(array);
-		return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+		return Array.from(array, (byte) => byte.toString(16).padStart(2, "0"))
+			.join("")
+			.toUpperCase();
 	}
 
 	// Target.closeTarget implementation
@@ -606,7 +645,9 @@ class CDPServer {
 				if (chrome.runtime.lastError) {
 					const error = chrome.runtime.lastError.message;
 					if (error.includes("Another debugger is already attached")) {
-						console.log(`🎭 Target.attachToTarget: Tab ${tabId} already has debugger - using existing connection`);
+						console.log(
+							`🎭 Target.attachToTarget: Tab ${tabId} already has debugger - using existing connection`,
+						);
 						this.attachedTabs.add(tabId);
 						resolve();
 					} else {
@@ -614,7 +655,9 @@ class CDPServer {
 					}
 				} else {
 					this.attachedTabs.add(tabId);
-					console.log(`✅ Target.attachToTarget: Successfully attached to tab ${tabId}`);
+					console.log(
+						`✅ Target.attachToTarget: Successfully attached to tab ${tabId}`,
+					);
 					resolve();
 				}
 			});
@@ -622,10 +665,10 @@ class CDPServer {
 
 		// Generate a session ID
 		const sessionId = `session_${targetId}_${Date.now()}`;
-		this.debuggerSessions.set(tabId, { 
-			sessionId, 
+		this.debuggerSessions.set(tabId, {
+			sessionId,
 			targetId,
-			browserContextId: this.defaultBrowserContextId
+			browserContextId: this.defaultBrowserContextId,
 		});
 
 		return { sessionId };
@@ -697,8 +740,10 @@ class CDPServer {
 
 		// Store auto-attach settings for future tabs
 		this.autoAttachSettings = { autoAttach, waitForDebuggerOnStart, flatten };
-		
-		console.log(`🎭 Target.setAutoAttach configured: autoAttach=${autoAttach} (extension context - stored for future tabs)`);
+
+		console.log(
+			`🎭 Target.setAutoAttach configured: autoAttach=${autoAttach} (extension context - stored for future tabs)`,
+		);
 
 		// In Chrome extension context, we can't directly control auto-attach
 		// but we can simulate the behavior by storing the settings
@@ -719,7 +764,7 @@ class CDPServer {
 	// Target.getTargetInfo implementation
 	async targetGetTargetInfo(params) {
 		const targetId = params?.targetId;
-		
+
 		// If no targetId provided or it's the browser target
 		if (!targetId || targetId === this.browserTargetId) {
 			return {
@@ -729,11 +774,11 @@ class CDPServer {
 					title: "",
 					url: "",
 					attached: true,
-					canAccessOpener: false
-				}
+					canAccessOpener: false,
+				},
 			};
 		}
-		
+
 		// Try to parse as a tab ID
 		const tabId = Number.parseInt(targetId, 10);
 		if (!Number.isNaN(tabId)) {
@@ -747,8 +792,10 @@ class CDPServer {
 						url: tab.url || "",
 						attached: this.attachedTabs.has(tabId),
 						canAccessOpener: false,
-						browserContextId: this.debuggerSessions.get(tabId)?.browserContextId || this.defaultBrowserContextId
-					}
+						browserContextId:
+							this.debuggerSessions.get(tabId)?.browserContextId ||
+							this.defaultBrowserContextId,
+					},
 				};
 			} catch (error) {
 				console.log(`🎭 Tab ${tabId} not found: ${error.message}`);
@@ -764,7 +811,7 @@ class CDPServer {
 				url: "",
 				attached: false,
 				canAccessOpener: false,
-			}
+			},
 		};
 	}
 
@@ -773,16 +820,18 @@ class CDPServer {
 		// In Chrome extension context, we can't create isolated browser contexts
 		// Generate a proper browser context ID and track it
 		const browserContextId = this.generateBrowserContextId();
-		
-		this.browserContexts.set(browserContextId, { 
+
+		this.browserContexts.set(browserContextId, {
 			created: Date.now(),
-			isDefault: false 
+			isDefault: false,
 		});
-		
-		console.log(`🎭 Target.createBrowserContext: Created context ${browserContextId} (extension context limitation)`);
-		
+
+		console.log(
+			`🎭 Target.createBrowserContext: Created context ${browserContextId} (extension context limitation)`,
+		);
+
 		return {
-			browserContextId: browserContextId
+			browserContextId: browserContextId,
 		};
 	}
 
@@ -790,7 +839,7 @@ class CDPServer {
 	setEventCallback(callback) {
 		this.onEventCallback = callback;
 	}
-	
+
 	// Update session mapping when Bridge assigns a sessionId
 	updateSessionMapping(targetId, sessionId, browserContextId) {
 		const tabId = Number.parseInt(targetId, 10);
@@ -798,9 +847,11 @@ class CDPServer {
 			this.debuggerSessions.set(tabId, {
 				sessionId,
 				targetId,
-				browserContextId: browserContextId || this.defaultBrowserContextId
+				browserContextId: browserContextId || this.defaultBrowserContextId,
 			});
-			console.log(`🎭 Updated session mapping: tab ${tabId} -> session ${sessionId}`);
+			console.log(
+				`🎭 Updated session mapping: tab ${tabId} -> session ${sessionId}`,
+			);
 		}
 	}
 

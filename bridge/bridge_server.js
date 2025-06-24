@@ -322,7 +322,8 @@ class UnifiedBridgeServer {
 		} else if (pathname === "/cdp-logs") {
 			// Return CDP traffic logs
 			const urlParams = new URLSearchParams(url.parse(req.url).query);
-			const limit = Number.parseInt(urlParams.get("limit")) || this.cdpLogs.length;
+			const limit =
+				Number.parseInt(urlParams.get("limit")) || this.cdpLogs.length;
 			const format = urlParams.get("format") || "json";
 			const logsToReturn = this.cdpLogs.slice(-limit);
 
@@ -330,11 +331,15 @@ class UnifiedBridgeServer {
 				// Return as JSONL format for CDP traffic analyzer
 				res.setHeader("Content-Type", "application/x-ndjson");
 				res.writeHead(200);
-				const jsonlContent = logsToReturn.map(log => JSON.stringify({
-					direction: log.direction,
-					timestamp: log.timestamp,
-					cdp_data: log.data
-				})).join('\n');
+				const jsonlContent = logsToReturn
+					.map((log) =>
+						JSON.stringify({
+							direction: log.direction,
+							timestamp: log.timestamp,
+							cdp_data: log.data,
+						}),
+					)
+					.join("\n");
 				res.end(jsonlContent);
 			} else {
 				// Return as JSON
@@ -342,7 +347,7 @@ class UnifiedBridgeServer {
 					total: this.cdpLogs.length,
 					returned: logsToReturn.length,
 					logs: logsToReturn,
-					cdpLoggingEnabled: this.cdpLoggingEnabled
+					cdpLoggingEnabled: this.cdpLoggingEnabled,
 				};
 				res.writeHead(200);
 				res.end(JSON.stringify(response, null, 2));
@@ -573,14 +578,14 @@ class UnifiedBridgeServer {
 			// Log CDP request
 			if (this.cdpLoggingEnabled) {
 				this.logCdpMessage({
-					direction: 'client_to_server',
+					direction: "client_to_server",
 					timestamp: new Date().toISOString(),
 					clientId: clientId,
 					messageId: messageId,
 					method: method,
 					sessionId: sessionId,
 					data: data,
-					type: 'request'
+					type: "request",
 				});
 			}
 
@@ -657,12 +662,17 @@ class UnifiedBridgeServer {
 			// Handle ping/pong keepalive
 			if (messageType === "ping") {
 				// Respond with pong
-				if (this.extensionClient && this.extensionClient.readyState === WebSocket.OPEN) {
-					this.extensionClient.send(JSON.stringify({
-						type: "pong",
-						timestamp: Date.now(),
-						originalTimestamp: data.timestamp
-					}));
+				if (
+					this.extensionClient &&
+					this.extensionClient.readyState === WebSocket.OPEN
+				) {
+					this.extensionClient.send(
+						JSON.stringify({
+							type: "pong",
+							timestamp: Date.now(),
+							originalTimestamp: data.timestamp,
+						}),
+					);
 				}
 				return;
 			}
@@ -738,14 +748,14 @@ class UnifiedBridgeServer {
 						// Log CDP response
 						if (this.cdpLoggingEnabled) {
 							this.logCdpMessage({
-								direction: 'server_to_client',
+								direction: "server_to_client",
 								timestamp: new Date().toISOString(),
 								clientId: requestInfo.clientId,
 								messageId: requestId,
 								method: requestInfo.method,
 								sessionId: requestInfo.sessionId,
 								data: cdpResponse,
-								type: 'response'
+								type: "response",
 							});
 						}
 
@@ -786,7 +796,9 @@ class UnifiedBridgeServer {
 						}
 					}
 
-					console.log(`🎭 Created session mapping: ${sessionId} -> ${targetId}`);
+					console.log(
+						`🎭 Created session mapping: ${sessionId} -> ${targetId}`,
+					);
 				}
 
 				// Route all CDP events (including Target.attachedToTarget)
@@ -845,7 +857,11 @@ class UnifiedBridgeServer {
 		const targetId = eventData.targetId;
 
 		// Log the event for debugging
-		this.logger.logSuccess("CDP", `event:${method}`, `target_${targetId || 'unknown'}`);
+		this.logger.logSuccess(
+			"CDP",
+			`event:${method}`,
+			`target_${targetId || "unknown"}`,
+		);
 
 		const cdpEventMessage = {
 			method: method,
@@ -857,7 +873,11 @@ class UnifiedBridgeServer {
 			const sessionId = this.targetToSession.get(targetId);
 			if (sessionId) {
 				cdpEventMessage.sessionId = sessionId;
-				this.logger.logSuccess("CDP", `mapped target ${targetId} to session ${sessionId}`, "");
+				this.logger.logSuccess(
+					"CDP",
+					`mapped target ${targetId} to session ${sessionId}`,
+					"",
+				);
 			}
 		}
 
@@ -873,14 +893,14 @@ class UnifiedBridgeServer {
 				// Log CDP event
 				if (this.cdpLoggingEnabled) {
 					this.logCdpMessage({
-						direction: 'server_to_client',
+						direction: "server_to_client",
 						timestamp: new Date().toISOString(),
-						clientId: 'main',
+						clientId: "main",
 						messageId: null,
 						method: method,
 						sessionId: cdpEventMessage.sessionId,
 						data: cdpEventMessage,
-						type: 'event'
+						type: "event",
 					});
 				}
 			}
@@ -893,14 +913,14 @@ class UnifiedBridgeServer {
 				// Log CDP event
 				if (this.cdpLoggingEnabled) {
 					this.logCdpMessage({
-						direction: 'server_to_client',
+						direction: "server_to_client",
 						timestamp: new Date().toISOString(),
-						clientId: sessionClient.clientId || 'session',
+						clientId: sessionClient.clientId || "session",
 						messageId: null,
 						method: method,
 						sessionId: cdpEventMessage.sessionId,
 						data: cdpEventMessage,
-						type: 'event'
+						type: "event",
 					});
 				}
 			} else {
@@ -912,14 +932,14 @@ class UnifiedBridgeServer {
 					// Log CDP event fallback
 					if (this.cdpLoggingEnabled) {
 						this.logCdpMessage({
-							direction: 'server_to_client',
+							direction: "server_to_client",
 							timestamp: new Date().toISOString(),
-							clientId: 'main_fallback',
+							clientId: "main_fallback",
 							messageId: null,
 							method: method,
 							sessionId: cdpEventMessage.sessionId,
 							data: cdpEventMessage,
-							type: 'event'
+							type: "event",
 						});
 					}
 				}
