@@ -1184,7 +1184,7 @@ if (typeof window.BROP === "undefined") {
 			this.sendServiceWorkerPing();
 
 			// Send ping every 2 minutes
-			setInterval(
+			this.keepaliveInterval = setInterval(
 				() => {
 					this.sendServiceWorkerPing();
 				},
@@ -1215,34 +1215,29 @@ if (typeof window.BROP === "undefined") {
 					{ passive: true },
 				);
 			});
+
+			// Clean up intervals and event listeners on page unload
+			window.addEventListener('beforeunload', () => {
+				if (this.keepaliveInterval) {
+					clearInterval(this.keepaliveInterval);
+					this.keepaliveInterval = null;
+					console.log("🧹 Cleaned up content script keepalive interval");
+				}
+			});
+
+			// Clean up on page hide (for back/forward cache)
+			window.addEventListener('pagehide', () => {
+				if (this.keepaliveInterval) {
+					clearInterval(this.keepaliveInterval);
+					this.keepaliveInterval = null;
+					console.log("🧹 Cleaned up content script keepalive interval on page hide");
+				}
+			});
 		}
 
 		async sendServiceWorkerPing() {
-			try {
-				// Use storage to send ping (works even if service worker is sleeping)
-				await chrome.storage.local.set({
-					contentScriptPing: Date.now(),
-					tabUrl: window.location.href,
-					tabTitle: document.title,
-				});
-
-				// Also try direct messaging (will fail if service worker is sleeping)
-				chrome.runtime
-					.sendMessage({
-						type: "CONTENT_SCRIPT_KEEPALIVE",
-						timestamp: Date.now(),
-						url: window.location.href,
-						title: document.title,
-					})
-					.catch(() => {
-						// Ignore errors - service worker might be sleeping
-						console.log(
-							"📵 Service worker ping via messaging failed (worker might be sleeping)",
-						);
-					});
-			} catch (error) {
-				console.error("Error sending service worker ping:", error);
-			}
+			// Simplified ping - removed storage-based keepalive mechanism
+			console.log("📱 Content script keepalive ping (storage mechanism removed)");
 		}
 	}
 

@@ -4,12 +4,17 @@
 class BROPServer {
 	constructor() {
 		this.enabled = true;
-		this.callLogs = [];
-		this.maxLogEntries = 1000;
+		// Use circular buffers for better memory management
+		this.maxLogEntries = 100; // Reduced from 1000
+		this.callLogs = new Array(this.maxLogEntries);
+		this.logIndex = 0;
+		this.logCount = 0;
 
-		// Error collection system
-		this.extensionErrors = [];
-		this.maxErrorEntries = 100;
+		// Error collection system with circular buffer
+		this.maxErrorEntries = 50; // Reduced from 100
+		this.extensionErrors = new Array(this.maxErrorEntries);
+		this.errorIndex = 0;
+		this.errorCount = 0;
 
 		// CDP debugger session management
 		this.attachedTabs = new Set();
@@ -17,6 +22,11 @@ class BROPServer {
 		this.autoAttachEnabled = false;
 
 		this.messageHandlers = new Map();
+		
+		// Debounced save for better performance
+		this.saveTimer = null;
+		this.lastSave = 0;
+		
 		this.setupMessageHandlers();
 		this.setupErrorHandlers();
 		this.loadSettings();
@@ -178,14 +188,11 @@ class BROPServer {
 			context: context,
 		};
 
-		this.extensionErrors.unshift(errorEntry);
-
-		// Keep only recent errors
-		if (this.extensionErrors.length > this.maxErrorEntries) {
-			this.extensionErrors = this.extensionErrors.slice(
-				0,
-				this.maxErrorEntries,
-			);
+		// Add to circular buffer
+		this.extensionErrors[this.errorIndex] = errorEntry;
+		this.errorIndex = (this.errorIndex + 1) % this.maxErrorEntries;
+		if (this.errorCount < this.maxErrorEntries) {
+			this.errorCount++;
 		}
 
 		// Also log to console for debugging
@@ -194,7 +201,48 @@ class BROPServer {
 			stack ? `\nStack: ${stack}` : "",
 		);
 
-		this.saveSettings();
+		// Debounced save to reduce I/O
+		this.debouncedSave();
+	}
+
+	// Debounced save to reduce excessive storage I/O
+	debouncedSave() {
+		const now = Date.now();
+		const timeSinceLastSave = now - this.lastSave;
+		
+		// Clear existing timer
+		if (this.saveTimer) {
+			clearTimeout(this.saveTimer);
+		}
+		
+		// Save immediately if last save was >30s ago, otherwise delay 5s
+		const delay = timeSinceLastSave > 30000 ? 0 : 5000;
+		
+		this.saveTimer = setTimeout(() => {
+			this.saveSettings();
+			this.lastSave = Date.now();
+			this.saveTimer = null;
+		}, delay);
+	}
+
+	// Get logs from circular buffer in chronological order
+	getCallLogs() {
+		if (this.logCount === 0) return [];
+		if (this.logCount < this.maxLogEntries) {
+			return this.callLogs.slice(0, this.logCount);
+		}
+		// Return logs in chronological order from circular buffer
+		return [...this.callLogs.slice(this.logIndex), ...this.callLogs.slice(0, this.logIndex)];
+	}
+
+	// Get errors from circular buffer in chronological order
+	getExtensionErrors() {
+		if (this.errorCount === 0) return [];
+		if (this.errorCount < this.maxErrorEntries) {
+			return this.extensionErrors.slice(0, this.errorCount);
+		}
+		// Return errors in chronological order from circular buffer
+		return [...this.extensionErrors.slice(this.errorIndex), ...this.extensionErrors.slice(0, this.errorIndex)];
 	}
 
 	async loadSettings() {
@@ -219,8 +267,8 @@ class BROPServer {
 		try {
 			await chrome.storage.local.set({
 				brop_enabled: this.enabled,
-				brop_logs: this.callLogs.slice(-this.maxLogEntries),
-				brop_errors: this.extensionErrors.slice(-this.maxErrorEntries),
+				brop_logs: this.getCallLogs(),
+				brop_errors: this.getExtensionErrors(),
 			});
 		} catch (error) {
 			console.error("Error saving BROP settings:", error);
@@ -809,7 +857,8 @@ class BROPServer {
 
 	getStoredConsoleLogs(limit = 100) {
 		// Return stored extension background console logs as fallback
-		return this.callLogs.slice(-limit).map((log) => ({
+		const logs = this.getCallLogs();
+		return logs.slice(-limit).map((log) => ({
 			level: log.success ? "info" : "error",
 			message: `${log.method}: ${log.success ? "success" : log.error}`,
 			timestamp: log.timestamp,
@@ -3352,11 +3401,12 @@ class BROPServer {
 
 	async handleGetExtensionErrors(params) {
 		const limit = params?.limit || 50;
-		const errors = this.extensionErrors.slice(0, limit);
+		const allErrors = this.getExtensionErrors();
+		const errors = allErrors.slice(0, limit);
 
 		return {
 			errors: errors,
-			total_errors: this.extensionErrors.length,
+			total_errors: this.errorCount,
 			max_stored: this.maxErrorEntries,
 			extension_info: {
 				name: chrome.runtime.getManifest()?.name || "BROP Extension",
@@ -3367,15 +3417,19 @@ class BROPServer {
 	}
 
 	async handleClearExtensionErrors(params) {
-		const clearedCount = this.extensionErrors.length;
+		const clearedCount = this.errorCount;
 
-		// Clear all extension errors
-		this.extensionErrors = [];
+		// Clear all extension errors by resetting circular buffer
+		this.extensionErrors = new Array(this.maxErrorEntries);
+		this.errorIndex = 0;
+		this.errorCount = 0;
 
 		// Also clear call logs if requested
 		if (params?.clearLogs) {
-			const clearedLogs = this.callLogs.length;
-			this.callLogs = [];
+			const clearedLogs = this.logCount;
+			this.callLogs = new Array(this.maxLogEntries);
+			this.logIndex = 0;
+			this.logCount = 0;
 
 			// Save cleared state
 			await this.saveSettings();
@@ -3473,12 +3527,15 @@ class BROPServer {
 			});
 		}
 
-		this.callLogs.unshift(logEntry);
-		if (this.callLogs.length > this.maxLogEntries) {
-			this.callLogs = this.callLogs.slice(0, this.maxLogEntries);
+		// Add to circular buffer (newest at current index)
+		this.callLogs[this.logIndex] = logEntry;
+		this.logIndex = (this.logIndex + 1) % this.maxLogEntries;
+		if (this.logCount < this.maxLogEntries) {
+			this.logCount++;
 		}
 
-		this.saveSettings();
+		// Debounced save to reduce I/O
+		this.debouncedSave();
 	}
 }
 

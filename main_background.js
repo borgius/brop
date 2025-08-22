@@ -12,13 +12,19 @@ class MainBackground {
 		this.bridgeSocket = null;
 		this.reconnectAttempts = 0;
 		this.reconnectTimer = null;
+		this.lastReconnectAttempt = 0;
 		this.connectionStatus = "disconnected";
 		this.isConnected = false;
 		this.isConnecting = false;
 		this.enabled = true;
 		this.pingInterval = null;
 		this.lastPongTime = Date.now();
-		this.storageInterval = null;
+		
+		
+		// Memory cleanup intervals
+		this.cleanupInterval = null;
+		this.memoryMonitorInterval = null;
+		this.healthMonitorInterval = null;
 
 		this.bridgeUrl = "ws://localhost:9224"; // Extension server port
 
@@ -37,8 +43,9 @@ class MainBackground {
 
 		this.setupErrorHandlers();
 		this.setupPopupMessageHandler();
-		this.setupStorageKeepalive();
+		this.setupOptimizedKeepalive();
 		this.setupTabHandlers();
+		this.setupMemoryManagement();
 		this.monitorHealth();
 		this.connectToBridge();
 	}
@@ -112,9 +119,6 @@ class MainBackground {
 
 						case "CLEAR_LOGS":
 							return await this.clearLogs();
-
-						case "CONTENT_SCRIPT_KEEPALIVE":
-							return this.handleContentScriptKeepalive(message);
 
 						default:
 							throw new Error(`Unknown popup message type: ${message.type}`);
@@ -508,92 +512,13 @@ class MainBackground {
 	}
 
 	setupStorageKeepalive() {
-		console.log("💾 Setting up enhanced keepalive mechanisms");
+		console.log("💾 Setting up keepalive mechanisms");
 
-		// Multiple keepalive strategies
-		this.setupStorageHeartbeat();
+		// Optimized keepalive strategies (removed storage heartbeat)
 		this.setupAlarmKeepAlive();
 		this.setupTabKeepAlive();
 	}
 
-	setupStorageHeartbeat() {
-		// Storage heartbeat - more frequent when disconnected
-		this.storageInterval = setInterval(
-			async () => {
-				try {
-					const result = await chrome.storage.local.get(["heartbeatCounter"]);
-					const counter = (result.heartbeatCounter || 0) + 1;
-
-					await chrome.storage.local.set({
-						heartbeat: Date.now(),
-						heartbeatCounter: counter,
-						extensionActive: true,
-						connectionStatus: this.connectionStatus,
-						isConnected: this.isConnected,
-						lastActivity: Date.now(),
-						serviceWorkerPID: chrome.runtime.id,
-					});
-
-					// More frequent heartbeat when disconnected
-					const interval = this.isConnected ? 30000 : 10000;
-					if (this.storageInterval && this.storageInterval !== interval) {
-						clearInterval(this.storageInterval);
-						this.setupStorageHeartbeat();
-					}
-
-					// Log every 6th heartbeat to reduce spam
-					if (counter % 6 === 0) {
-						console.log(
-							`💓 Storage heartbeat #${counter} (${this.isConnected ? "connected" : "disconnected"})`,
-						);
-					}
-
-					// Try to reconnect if disconnected for too long
-					if (!this.isConnected && counter % 3 === 0) {
-						console.log("🔄 Heartbeat-triggered reconnection attempt");
-						this.connectToBridge();
-					}
-				} catch (error) {
-					console.error("Error updating storage heartbeat:", error);
-				}
-			},
-			this.isConnected ? 30000 : 10000,
-		);
-
-		// Listen for storage changes (including from content scripts or popup)
-		chrome.storage.onChanged.addListener((changes, namespace) => {
-			if (namespace === "local") {
-				// Handle external ping requests
-				if (changes.externalPing) {
-					console.log(
-						"📨 External ping received:",
-						changes.externalPing.newValue,
-					);
-					this.handleExternalPing();
-				}
-
-				// Handle wakeup requests
-				if (changes.wakeupRequest) {
-					console.log("⏰ Wakeup request received");
-					this.handleWakeupRequest();
-				}
-
-				// Handle keep-alive pings from content scripts
-				if (changes.contentScriptPing) {
-					console.log("📱 Content script ping received");
-					this.handleContentScriptPing();
-				}
-			}
-		});
-
-		// Initial heartbeat
-		chrome.storage.local.set({
-			heartbeat: Date.now(),
-			heartbeatCounter: 0,
-			extensionStarted: Date.now(),
-			serviceWorkerStartTime: Date.now(),
-		});
-	}
 
 	setupTabHandlers() {
 		// Ensure content scripts are injected when tabs are updated
@@ -654,86 +579,6 @@ class MainBackground {
 		}
 	}
 
-	async handleExternalPing() {
-		// Respond to external pings to confirm service worker is alive
-		try {
-			await chrome.storage.local.set({
-				pongResponse: Date.now(),
-				serviceWorkerActive: true,
-				lastPingHandled: Date.now(),
-			});
-
-			// If not connected, try to reconnect
-			if (!this.isConnected) {
-				console.log("🔄 External ping triggered reconnection attempt");
-				this.connectToBridge();
-			}
-		} catch (error) {
-			console.error("Error handling external ping:", error);
-		}
-	}
-
-	async handleWakeupRequest() {
-		// Handle wakeup requests - can be triggered by popup or content scripts
-		console.log("☕ Service worker wakeup requested");
-
-		// Update status
-		await chrome.storage.local.set({
-			wakeupResponse: Date.now(),
-			serviceWorkerAwake: true,
-			lastWakeupTime: Date.now(),
-		});
-
-		// Restart all keepalive mechanisms
-		this.restartKeepAliveMechanisms();
-
-		// Ensure connections are active
-		if (!this.isConnected) {
-			this.connectToBridge();
-		}
-	}
-
-	handleContentScriptKeepalive(message) {
-		console.log("📱 Received content script keepalive ping");
-
-		// Update storage to show we received the ping
-		chrome.storage.local
-			.set({
-				lastContentScriptKeepalive: Date.now(),
-				contentScriptKeepaliveReceived: true,
-				lastContentScriptUrl: message.url,
-				lastContentScriptTitle: message.title,
-			})
-			.catch(() => {
-				// Ignore storage errors
-			});
-
-		// If not connected, try to reconnect
-		if (!this.isConnected) {
-			console.log("🔄 Content script ping triggered reconnection attempt");
-			this.connectToBridge();
-		}
-
-		return { success: true, timestamp: Date.now() };
-	}
-
-	async handleContentScriptPing() {
-		// Handle pings from content scripts to keep service worker alive
-		try {
-			await chrome.storage.local.set({
-				contentScriptPongResponse: Date.now(),
-				lastContentScriptPing: Date.now(),
-			});
-
-			// If not connected, try to reconnect
-			if (!this.isConnected) {
-				console.log("🔄 Content script ping triggered reconnection");
-				this.connectToBridge();
-			}
-		} catch (error) {
-			console.error("Error handling content script ping:", error);
-		}
-	}
 
 	setupAlarmKeepAlive() {
 		// Use Chrome alarms API for reliable background execution
@@ -843,11 +688,6 @@ class MainBackground {
 			this.startKeepalive();
 		}
 
-		// Restart storage heartbeat with current connection status
-		if (this.storageInterval) {
-			clearInterval(this.storageInterval);
-			this.setupStorageHeartbeat();
-		}
 
 		// Refresh alarm
 		this.setupAlarmKeepAlive();
@@ -857,47 +697,27 @@ class MainBackground {
 	// All BROP commands are now handled by the BROPServer instance
 	// Clean multiplexing layer with delegated command processing
 
-	// Enhanced error recovery and connection management
-	monitorHealth() {
-		// Health monitoring that runs every minute
-		setInterval(async () => {
-			try {
-				const now = Date.now();
-				const result = await chrome.storage.local.get([
-					"heartbeat",
-					"lastActivity",
-					"extensionStarted",
-				]);
-
-				// Check if we've been idle for too long
-				const timeSinceLastActivity =
-					now - (result.lastActivity || result.extensionStarted || now);
-				const timeSinceHeartbeat = now - (result.heartbeat || now);
-
-				// If we haven't had activity for 10 minutes and not connected, be more aggressive
-				if (!this.isConnected && timeSinceLastActivity > 10 * 60 * 1000) {
-					console.log(
-						"🚨 Extension has been idle and disconnected for 10+ minutes, forcing reconnection",
-					);
-					this.reconnectAttempts = 0; // Reset attempts
+	// Lightweight health check (called from consolidated interval)
+	performHealthCheck() {
+		try {
+			// Simple connection health check
+			if (!this.isConnected && this.reconnectAttempts < 10) {
+				// Only try reconnection occasionally if not connected
+				if (Date.now() - (this.lastReconnectAttempt || 0) > 2 * 60 * 1000) {
+					console.log("🔄 Health check triggered reconnection attempt");
+					this.lastReconnectAttempt = Date.now();
 					this.connectToBridge();
 				}
-
-				// If heartbeat is stale, restart mechanisms
-				if (timeSinceHeartbeat > 2 * 60 * 1000) {
-					// 2 minutes
-					console.log("💓 Heartbeat is stale, restarting keepalive mechanisms");
-					this.restartKeepAliveMechanisms();
-				}
-
-				await chrome.storage.local.set({
-					lastHealthCheck: now,
-					healthCheckCount: (await this.getHealthCheckCount()) + 1,
-				});
-			} catch (error) {
-				console.error("Error in health monitor:", error);
 			}
-		}, 60 * 1000); // Every minute
+			
+			// Restart keepalive if ping interval is not running
+			if (this.isConnected && !this.pingInterval) {
+				console.log("🔄 Health check restarting keepalive");
+				this.startKeepalive();
+			}
+		} catch (error) {
+			console.error("Error in health check:", error);
+		}
 	}
 
 	async getHealthCheckCount() {
@@ -907,6 +727,96 @@ class MainBackground {
 		} catch (error) {
 			return 0;
 		}
+	}
+
+
+	// Memory management and cleanup (consolidated intervals)
+	setupMemoryManagement() {
+		console.log("🧠 Setting up memory management");
+		
+		// Consolidated maintenance interval - runs every minute but different tasks at different frequencies
+		this.maintenanceCounter = 0;
+		this.cleanupInterval = setInterval(() => {
+			this.maintenanceCounter++;
+			
+			// Memory cleanup every 5 minutes (counter % 5 === 0)
+			if (this.maintenanceCounter % 5 === 0) {
+				this.performMemoryCleanup();
+			}
+			
+			// Memory monitoring every 10 minutes (counter % 10 === 0)  
+			if (this.maintenanceCounter % 10 === 0) {
+				this.logMemoryUsage();
+			}
+			
+			// Health check every 1 minute
+			this.performHealthCheck();
+			
+		}, 1 * 60 * 1000); // Single interval every minute
+	}
+
+	performMemoryCleanup() {
+		console.log("🧹 Performing memory cleanup");
+		
+		try {
+			// Clean up BROP server logs
+			if (this.bropServer?.callLogs) {
+				const maxLogs = 100; // Reduced from 1000
+				if (this.bropServer.callLogs.length > maxLogs) {
+					this.bropServer.callLogs = this.bropServer.callLogs.slice(-maxLogs);
+					console.log(`🧹 Trimmed BROP logs to ${maxLogs} entries`);
+				}
+			}
+			
+			// Clean up extension errors
+			if (this.bropServer?.extensionErrors) {
+				const maxErrors = 50; // Reduced from 100
+				if (this.bropServer.extensionErrors.length > maxErrors) {
+					this.bropServer.extensionErrors = this.bropServer.extensionErrors.slice(0, maxErrors);
+					console.log(`🧹 Trimmed error logs to ${maxErrors} entries`);
+				}
+			}
+			
+			// Clean up CDP server data
+			if (this.cdpServer) {
+				this.cdpServer.performCleanup();
+			}
+			
+			// Force garbage collection if available
+			if (global.gc) {
+				global.gc();
+				console.log("🧹 Forced garbage collection");
+			}
+			
+		} catch (error) {
+			console.error("Memory cleanup failed:", error);
+		}
+	}
+
+	logMemoryUsage() {
+		try {
+			const bropLogCount = this.bropServer?.callLogs?.length || 0;
+			const errorCount = this.bropServer?.extensionErrors?.length || 0;
+			const cdpSessions = this.cdpServer?.debuggerSessions?.size || 0;
+			const attachedTabs = this.cdpServer?.attachedTabs?.size || 0;
+			
+			console.log(`📊 Memory usage: BROP logs=${bropLogCount}, errors=${errorCount}, CDP sessions=${cdpSessions}, attached tabs=${attachedTabs}`);
+		} catch (error) {
+			console.error("Memory monitoring failed:", error);
+		}
+	}
+
+	// Cleanup on shutdown
+	shutdown() {
+		console.log("🔌 Shutting down main background");
+		
+		// Clear the single consolidated interval
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval);
+		}
+		
+		// Final cleanup
+		this.performMemoryCleanup();
 	}
 }
 

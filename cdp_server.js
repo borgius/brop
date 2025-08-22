@@ -9,6 +9,11 @@ class CDPServer {
 		this.debuggerSessions = new Map(); // tabId -> sessionInfo
 		this.connectionToTab = new Map(); // connectionId -> tabId
 		this.tabToConnection = new Map(); // tabId -> connectionId
+		
+		// Cleanup management
+		this.lastCleanup = Date.now();
+		this.cleanupInterval = null;
+		this.sessionTimeouts = new Map(); // tabId -> timeoutId
 
 		// Generate a stable browser target ID
 		this.browserTargetId = this.generateBrowserTargetId();
@@ -21,6 +26,7 @@ class CDPServer {
 		this.browserContexts.set(this.defaultBrowserContextId, { isDefault: true });
 
 		this.setupCDPEventForwarding();
+		this.setupCleanupMechanisms();
 		console.log("🎭 CDP Server initialized using Chrome Extension APIs");
 	}
 
@@ -86,17 +92,141 @@ class CDPServer {
 
 		// Clean up debugger sessions when tabs are closed
 		chrome.tabs.onRemoved.addListener((tabId) => {
-			if (this.attachedTabs.has(tabId)) {
-				console.log(`🎭 Cleaning up CDP session for closed tab ${tabId}`);
-				chrome.debugger.detach({ tabId }).catch(() => {
-					// Ignore errors when tab is already gone
-				});
-				this.attachedTabs.delete(tabId);
-				this.debuggerSessions.delete(tabId);
-			}
+			this.cleanupTabSession(tabId);
+		});
+		
+		// Clean up when tabs are replaced (e.g., prerendering)
+		chrome.tabs.onReplaced?.addListener((addedTabId, removedTabId) => {
+			this.cleanupTabSession(removedTabId);
 		});
 
 		console.log("🎭 CDP event forwarding set up");
+	}
+
+	setupCleanupMechanisms() {
+		// Optimized cleanup - less frequent but more efficient
+		this.cleanupCounter = 0;
+		this.cleanupInterval = setInterval(() => {
+			this.cleanupCounter++;
+			
+			// Lightweight cleanup every 2 minutes
+			this.performLightweightCleanup();
+			
+			// Full cleanup every 10 minutes
+			if (this.cleanupCounter % 5 === 0) {
+				this.performFullCleanup();
+			}
+		}, 2 * 60 * 1000);
+		
+		console.log("🧹 CDP cleanup mechanisms initialized");
+	}
+
+	cleanupTabSession(tabId) {
+		if (this.attachedTabs.has(tabId)) {
+			console.log(`🎭 Cleaning up CDP session for tab ${tabId}`);
+			
+			// Clear session timeout
+			if (this.sessionTimeouts.has(tabId)) {
+				clearTimeout(this.sessionTimeouts.get(tabId));
+				this.sessionTimeouts.delete(tabId);
+			}
+			
+			// Detach debugger
+			chrome.debugger.detach({ tabId }).catch(() => {
+				// Ignore errors when tab is already gone
+			});
+			
+			// Clean up tracking
+			this.attachedTabs.delete(tabId);
+			this.debuggerSessions.delete(tabId);
+			
+			// Clean up connection mappings
+			const connectionId = this.tabToConnection.get(tabId);
+			if (connectionId) {
+				this.connectionToTab.delete(connectionId);
+				this.tabToConnection.delete(tabId);
+			}
+		}
+	}
+
+	// Lightweight cleanup - only clean obviously stale data
+	performLightweightCleanup() {
+		const now = Date.now();
+		
+		try {
+			// Clean up very stale pending requests (older than 5 minutes)
+			const veryStaleThreshold = 5 * 60 * 1000;
+			let removedRequests = 0;
+			
+			for (const [messageId, requestInfo] of this.pendingRequests.entries()) {
+				if (now - (requestInfo.timestamp || 0) > veryStaleThreshold) {
+					this.pendingRequests.delete(messageId);
+					removedRequests++;
+				}
+			}
+			
+			if (removedRequests > 0) {
+				console.log(`🧹 CDP lightweight cleanup: removed ${removedRequests} very stale requests`);
+			}
+			
+		} catch (error) {
+			console.error("CDP lightweight cleanup failed:", error);
+		}
+	}
+
+	// Full cleanup - comprehensive but less frequent
+	performFullCleanup() {
+		this.lastCleanup = Date.now();
+		const now = Date.now();
+		
+		try {
+			// Clean up stale pending requests (older than 2 minutes)
+			const staleThreshold = 2 * 60 * 1000;
+			let removedRequests = 0;
+			
+			for (const [messageId, requestInfo] of this.pendingRequests.entries()) {
+				if (now - (requestInfo.timestamp || 0) > staleThreshold) {
+					this.pendingRequests.delete(messageId);
+					removedRequests++;
+				}
+			}
+			
+			// Clean up stale debugger sessions (inactive for 10 minutes)
+			const sessionStaleThreshold = 10 * 60 * 1000;
+			let removedSessions = 0;
+			
+			for (const [tabId, sessionInfo] of this.debuggerSessions.entries()) {
+				const lastActivity = sessionInfo.lastActivity || sessionInfo.created || 0;
+				if (now - lastActivity > sessionStaleThreshold) {
+					console.log(`🎭 Removing stale CDP session for tab ${tabId}`);
+					this.cleanupTabSession(tabId);
+					removedSessions++;
+				}
+			}
+			
+			// Only verify tabs if we have many attached (avoid unnecessary API calls)
+			if (this.attachedTabs.size > 5) {
+				let verifiedTabs = 0;
+				for (const tabId of this.attachedTabs) {
+					chrome.tabs.get(tabId).catch(() => {
+						// Tab doesn't exist, clean it up
+						this.cleanupTabSession(tabId);
+					});
+					verifiedTabs++;
+				}
+				console.log(`🧹 CDP full cleanup: removed ${removedRequests} stale requests, ${removedSessions} stale sessions, verified ${verifiedTabs} tabs`);
+			} else if (removedRequests > 0 || removedSessions > 0) {
+				console.log(`🧹 CDP full cleanup: removed ${removedRequests} stale requests, ${removedSessions} stale sessions`);
+			}
+			
+		} catch (error) {
+			console.error("CDP full cleanup failed:", error);
+		}
+	}
+	
+	// Legacy method for compatibility
+	performCleanup() {
+		this.performFullCleanup();
 	}
 
 	// Process CDP command using Chrome Extension APIs

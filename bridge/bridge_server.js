@@ -32,6 +32,15 @@ class TableLogger {
 		this.errorWidth = 20;
 		this.outputStream = options.outputStream || "stdout";
 		this.mcpMode = options.mcpMode || false;
+		
+		// Pre-compute padding strings for performance
+		this.spacePadding = {};
+		for (let i = 1; i <= 60; i++) {
+			this.spacePadding[i] = " ".repeat(i);
+		}
+		
+		// Pre-compute separator
+		this.separator = " │ ";
 	}
 
 	getTimestamp() {
@@ -40,23 +49,29 @@ class TableLogger {
 
 	formatField(text, width, align = "left") {
 		const str = String(text || "").slice(0, width);
+		const padding = width - str.length;
+		
+		// Handle emoji special cases
 		if (str === "✅" || str === "❌" || str === "🔗" || str === "🔌") {
-			return str.padEnd(1) + " ".repeat(width - 1);
+			return str + (this.spacePadding[width - 1] || " ".repeat(width - 1));
 		}
-		return align === "right" ? str.padStart(width) : str.padEnd(width);
+		
+		if (padding <= 0) return str;
+		
+		// Use pre-computed padding for performance
+		const spaces = this.spacePadding[padding] || " ".repeat(padding);
+		return align === "right" ? spaces + str : str + spaces;
 	}
 
 	formatRow(status, type, command, connection, error = "") {
 		const timestamp = this.getTimestamp();
-		const parts = [
-			this.formatField(timestamp, this.tsWidth),
-			this.formatField(status, this.statusWidth),
-			this.formatField(type, this.typeWidth),
-			this.formatField(command, this.commandWidth),
-			this.formatField(connection, this.connWidth),
-			this.formatField(error, this.errorWidth),
-		];
-		return parts.join(" │ ");
+		// Use direct concatenation for better performance
+		return this.formatField(timestamp, this.tsWidth) + this.separator +
+			   this.formatField(status, this.statusWidth) + this.separator +
+			   this.formatField(type, this.typeWidth) + this.separator +
+			   this.formatField(command, this.commandWidth) + this.separator +
+			   this.formatField(connection, this.connWidth) + this.separator +
+			   this.formatField(error, this.errorWidth);
 	}
 
 	log(message) {
@@ -120,10 +135,12 @@ class UnifiedBridgeServer {
 		this.sessionToTarget = new Map(); // sessionId -> targetId
 		this.targetToClient = new Map(); // targetId -> clientId
 
-		// Message routing
+		// Message routing with size limits
 		this.pendingBropRequests = new Map(); // messageId -> bropClient
 		this.pendingCdpRequests = new Map(); // messageId -> requestInfo
 		this.pendingCommandInfo = new Map(); // messageId -> { command, connection } for response logging
+		this.requestTimeouts = new Map(); // messageId -> timeoutId
+		this.maxPendingRequests = 1000; // Prevent unbounded growth
 		this.messageCounter = 0;
 		this.connectionCounter = 0;
 
@@ -149,24 +166,42 @@ class UnifiedBridgeServer {
 				"ws://localhost:9222/devtools/browser/brop-bridge-uuid-12345678",
 		};
 
-		// Logs for debugging
-		this.logs = [];
-		this.maxLogs = 1000;
+		// Logs for debugging - circular buffer for efficiency
+		this.maxLogs = 200; // Reduced from 1000
+		this.logs = new Array(this.maxLogs);
+		this.logIndex = 0;
+		this.logCount = 0;
 
-		// CDP message logging
-		this.cdpLogs = [];
-		this.maxCdpLogs = 5000;
-		this.cdpLoggingEnabled = true;
+		// CDP message logging - circular buffer for efficiency
+		this.maxCdpLogs = 500; // Reduced from 5000
+		this.cdpLogs = new Array(this.maxCdpLogs);
+		this.cdpLogIndex = 0;
+		this.cdpLogCount = 0;
+		this.cdpLoggingEnabled = false; // Disabled by default
+		
+		// Memory management
+		this.lastCleanup = Date.now();
+		this.cleanupInterval = null;
+		
+		// Message parsing cache for performance
+		this.messageCache = new Map();
+		this.maxCacheSize = 100;
 
 		// Table logger
 		this.logger = new TableLogger({
 			outputStream: options.logToStderr ? "stderr" : "stdout",
 			mcpMode: options.mcpMode || false,
 		});
+		
+		// Enable CDP logging if explicitly requested
+		if (options.enableCdpLogging) {
+			this.cdpLoggingEnabled = true;
+			console.log("🎭 CDP logging enabled");
+		}
 	}
 
 	log(message, ...args) {
-		// Store all logs for debugging endpoint
+		// Store all logs for debugging endpoint using circular buffer
 		const logEntry = {
 			timestamp: this.logger.getTimestamp(),
 			message: message,
@@ -175,15 +210,25 @@ class UnifiedBridgeServer {
 			level: "info",
 		};
 
-		this.logs.push(logEntry);
-
-		// Keep only the last maxLogs entries
-		if (this.logs.length > this.maxLogs) {
-			this.logs.splice(0, this.logs.length - this.maxLogs);
+		// Add to circular buffer
+		this.logs[this.logIndex] = logEntry;
+		this.logIndex = (this.logIndex + 1) % this.maxLogs;
+		if (this.logCount < this.maxLogs) {
+			this.logCount++;
 		}
 
 		// Use system logging for non-structured messages
 		this.logger.logSystem(message);
+	}
+
+	// Get logs from circular buffer in chronological order
+	getLogs() {
+		if (this.logCount === 0) return [];
+		if (this.logCount < this.maxLogs) {
+			return this.logs.slice(0, this.logCount);
+		}
+		// Return logs in chronological order from circular buffer
+		return [...this.logs.slice(this.logIndex), ...this.logs.slice(0, this.logIndex)];
 	}
 
 	getNextMessageId() {
@@ -194,6 +239,58 @@ class UnifiedBridgeServer {
 	getNextConnectionId() {
 		this.connectionCounter++;
 		return `conn_${this.connectionCounter}`;
+	}
+
+	// Set timeout for pending requests to prevent memory leaks
+	setRequestTimeout(messageId, type = "unknown") {
+		const timeoutId = setTimeout(() => {
+			if (this.pendingBropRequests.has(messageId)) {
+				this.pendingBropRequests.delete(messageId);
+				console.warn(`⏰ BROP request ${messageId} timed out after 2 minutes`);
+			}
+			if (this.pendingCdpRequests.has(messageId)) {
+				this.pendingCdpRequests.delete(messageId);
+				console.warn(`⏰ CDP request ${messageId} timed out after 2 minutes`);
+			}
+			this.pendingCommandInfo.delete(messageId);
+			this.requestTimeouts.delete(messageId);
+		}, 2 * 60 * 1000); // 2 minute timeout
+
+		this.requestTimeouts.set(messageId, timeoutId);
+	}
+
+	// Clear request timeout when response is received
+	clearRequestTimeout(messageId) {
+		if (this.requestTimeouts.has(messageId)) {
+			clearTimeout(this.requestTimeouts.get(messageId));
+			this.requestTimeouts.delete(messageId);
+		}
+	}
+
+	// Enforce map size limits to prevent unbounded growth
+	enforceMapLimits() {
+		// Clean up oldest BROP requests if over limit
+		if (this.pendingBropRequests.size > this.maxPendingRequests) {
+			const excess = this.pendingBropRequests.size - this.maxPendingRequests;
+			const oldestKeys = Array.from(this.pendingBropRequests.keys()).slice(0, excess + 100);
+			for (const key of oldestKeys) {
+				this.pendingBropRequests.delete(key);
+				this.clearRequestTimeout(key);
+				this.pendingCommandInfo.delete(key);
+			}
+			console.warn(`⚠️ Cleaned ${oldestKeys.length} old BROP requests to prevent memory leak`);
+		}
+
+		// Clean up oldest CDP requests if over limit
+		if (this.pendingCdpRequests.size > this.maxPendingRequests) {
+			const excess = this.pendingCdpRequests.size - this.maxPendingRequests;
+			const oldestKeys = Array.from(this.pendingCdpRequests.keys()).slice(0, excess + 100);
+			for (const key of oldestKeys) {
+				this.pendingCdpRequests.delete(key);
+				this.clearRequestTimeout(key);
+			}
+			console.warn(`⚠️ Cleaned ${oldestKeys.length} old CDP requests to prevent memory leak`);
+		}
 	}
 
 	// Helper to format connection display with name
@@ -209,6 +306,11 @@ class UnifiedBridgeServer {
 	async startServers() {
 		this.running = true;
 		this.logger.printHeader();
+		
+		// Start cleanup interval
+		this.cleanupInterval = setInterval(() => {
+			this.performCleanup();
+		}, 5 * 60 * 1000); // Every 5 minutes
 
 		try {
 			// Start BROP server (port 9225 - BROP clients)
@@ -308,11 +410,12 @@ class UnifiedBridgeServer {
 		} else if (pathname === "/logs") {
 			// Return bridge server logs for debugging
 			const urlParams = new URLSearchParams(url.parse(req.url).query);
-			const limit = Number.parseInt(urlParams.get("limit")) || this.logs.length;
-			const logsToReturn = this.logs.slice(-limit);
+			const allLogs = this.getLogs();
+			const limit = Number.parseInt(urlParams.get("limit")) || allLogs.length;
+			const logsToReturn = allLogs.slice(-Math.min(limit, allLogs.length));
 
 			const response = {
-				total: this.logs.length,
+				total: this.logCount,
 				returned: logsToReturn.length,
 				logs: logsToReturn,
 			};
@@ -322,10 +425,10 @@ class UnifiedBridgeServer {
 		} else if (pathname === "/cdp-logs") {
 			// Return CDP traffic logs
 			const urlParams = new URLSearchParams(url.parse(req.url).query);
-			const limit =
-				Number.parseInt(urlParams.get("limit")) || this.cdpLogs.length;
+			const allCdpLogs = this.getCdpLogs();
+			const limit = Number.parseInt(urlParams.get("limit")) || allCdpLogs.length;
 			const format = urlParams.get("format") || "json";
-			const logsToReturn = this.cdpLogs.slice(-limit);
+			const logsToReturn = allCdpLogs.slice(-Math.min(limit, allCdpLogs.length));
 
 			if (format === "jsonl") {
 				// Return as JSONL format for CDP traffic analyzer
@@ -344,7 +447,7 @@ class UnifiedBridgeServer {
 			} else {
 				// Return as JSON
 				const response = {
-					total: this.cdpLogs.length,
+					total: this.cdpLogCount,
 					returned: logsToReturn.length,
 					logs: logsToReturn,
 					cdpLoggingEnabled: this.cdpLoggingEnabled,
@@ -525,7 +628,7 @@ class UnifiedBridgeServer {
 
 	processBropMessage(client, message) {
 		try {
-			const data = JSON.parse(message);
+			const data = this.parseMessage(message);
 			const commandType = data.method || data.command?.type;
 			const messageId = data.id || this.getNextMessageId();
 
@@ -566,6 +669,14 @@ class UnifiedBridgeServer {
 				connection: connectionDisplay,
 			});
 
+			// Set timeout for this request
+			this.setRequestTimeout(messageId, "BROP");
+
+			// Enforce size limits to prevent memory leaks
+			if (this.pendingBropRequests.size % 100 === 0) {
+				this.enforceMapLimits();
+			}
+
 			// Forward to extension
 			this.extensionClient.send(JSON.stringify(data));
 		} catch (error) {
@@ -575,7 +686,7 @@ class UnifiedBridgeServer {
 
 	processCdpMessage(clientId, message) {
 		try {
-			const data = JSON.parse(message);
+			const data = this.parseMessage(message);
 			const method = data.method;
 			const messageId = data.id;
 			const sessionId = data.sessionId;
@@ -639,6 +750,14 @@ class UnifiedBridgeServer {
 				originalCommand: data,
 			});
 
+			// Set timeout for this request
+			this.setRequestTimeout(messageId, "CDP");
+
+			// Enforce size limits to prevent memory leaks
+			if (this.pendingCdpRequests.size % 100 === 0) {
+				this.enforceMapLimits();
+			}
+
 			// Track Target.createTarget commands for session management
 			if (method === "Target.createTarget") {
 				this.pendingTargetCreations = this.pendingTargetCreations || new Map();
@@ -663,7 +782,7 @@ class UnifiedBridgeServer {
 
 	processExtensionMessage(message) {
 		try {
-			const data = JSON.parse(message);
+			const data = this.parseMessage(message);
 			const messageType = data.type;
 
 			// Handle ping/pong keepalive
@@ -691,6 +810,7 @@ class UnifiedBridgeServer {
 				if (this.pendingBropRequests.has(requestId)) {
 					const client = this.pendingBropRequests.get(requestId);
 					this.pendingBropRequests.delete(requestId);
+					this.clearRequestTimeout(requestId);
 
 					if (client.readyState === WebSocket.OPEN) {
 						client.send(JSON.stringify(data));
@@ -722,6 +842,7 @@ class UnifiedBridgeServer {
 				if (this.pendingCdpRequests.has(requestId)) {
 					const requestInfo = this.pendingCdpRequests.get(requestId);
 					this.pendingCdpRequests.delete(requestId);
+					this.clearRequestTimeout(requestId);
 
 					// Handle Target.createTarget response - no longer generate attachedToTarget here
 					if (this.pendingTargetCreations?.has(requestId)) {
@@ -1002,18 +1123,162 @@ class UnifiedBridgeServer {
 	}
 
 	logCdpMessage(logEntry) {
-		// Add CDP message to log
-		this.cdpLogs.push(logEntry);
+		// Only log if enabled
+		if (!this.cdpLoggingEnabled) return;
+		
+		// Add CDP message to circular buffer
+		this.cdpLogs[this.cdpLogIndex] = logEntry;
+		this.cdpLogIndex = (this.cdpLogIndex + 1) % this.maxCdpLogs;
+		if (this.cdpLogCount < this.maxCdpLogs) {
+			this.cdpLogCount++;
+		}
+	}
 
-		// Keep only the last maxCdpLogs entries
-		if (this.cdpLogs.length > this.maxCdpLogs) {
-			this.cdpLogs.splice(0, this.cdpLogs.length - this.maxCdpLogs);
+	// Get CDP logs from circular buffer in chronological order
+	getCdpLogs() {
+		if (this.cdpLogCount === 0) return [];
+		if (this.cdpLogCount < this.maxCdpLogs) {
+			return this.cdpLogs.slice(0, this.cdpLogCount);
+		}
+		// Return logs in chronological order from circular buffer
+		return [...this.cdpLogs.slice(this.cdpLogIndex), ...this.cdpLogs.slice(0, this.cdpLogIndex)];
+	}
+
+	// Safe JSON parsing with caching for performance
+	parseMessage(message) {
+		// Check cache first
+		if (this.messageCache.has(message)) {
+			return this.messageCache.get(message);
+		}
+		
+		let parsed;
+		try {
+			parsed = JSON.parse(message);
+		} catch (error) {
+			this.logger.logError("JSON", "parse", "invalid", `Invalid JSON: ${error.message}`);
+			throw new Error(`Invalid JSON message: ${error.message}`);
+		}
+		
+		// Cache the parsed result (with size limit)
+		if (this.messageCache.size >= this.maxCacheSize) {
+			const firstKey = this.messageCache.keys().next().value;
+			this.messageCache.delete(firstKey);
+		}
+		
+		this.messageCache.set(message, parsed);
+		return parsed;
+	}
+
+	// Perform aggressive memory cleanup
+	performCleanup() {
+		this.lastCleanup = Date.now();
+		const now = Date.now();
+		
+		try {
+			// Clean up stale pending requests (older than 5 minutes)
+			const staleThreshold = 5 * 60 * 1000;
+			let cleanedRequests = 0;
+			
+			for (const [messageId, client] of this.pendingBropRequests.entries()) {
+				if (client.readyState !== WebSocket.OPEN) {
+					this.pendingBropRequests.delete(messageId);
+					this.clearRequestTimeout(messageId);
+					cleanedRequests++;
+				}
+			}
+			
+			for (const [messageId, requestInfo] of this.pendingCdpRequests.entries()) {
+				if (!requestInfo.originalClient || requestInfo.originalClient.readyState !== WebSocket.OPEN) {
+					this.pendingCdpRequests.delete(messageId);
+					this.clearRequestTimeout(messageId);
+					cleanedRequests++;
+				}
+			}
+			
+			// Clean up stale command info
+			this.pendingCommandInfo.clear();
+			
+			// Clean up stale session mappings (reduced from 1 hour to 30 minutes)
+			let cleanedSessions = 0;
+			for (const [sessionId, sessionInfo] of this.sessionChannels.entries()) {
+				if (now - sessionInfo.created > 30 * 60 * 1000) { // 30 minutes old
+					this.sessionChannels.delete(sessionId);
+					this.targetToSession.delete(sessionInfo.targetId);
+					this.sessionToTarget.delete(sessionId);
+					cleanedSessions++;
+				}
+			}
+			
+			// Clean up orphaned target mappings (targets without corresponding sessions)
+			let cleanedTargets = 0;
+			for (const [targetId, sessionId] of this.targetToSession.entries()) {
+				if (!this.sessionChannels.has(sessionId)) {
+					this.targetToSession.delete(targetId);
+					this.sessionToTarget.delete(sessionId);
+					this.targetToClient.delete(targetId);
+					cleanedTargets++;
+				}
+			}
+			
+			// Clean up disconnected CDP clients
+			for (const [clientId, clientInfo] of this.cdpClients.entries()) {
+				if (!clientInfo.connected || clientInfo.ws.readyState !== WebSocket.OPEN) {
+					this.cleanupCdpClient(clientId);
+				}
+			}
+			
+			// Clean up BROP connections
+			for (const client of this.bropConnections.keys()) {
+				if (client.readyState !== WebSocket.OPEN) {
+					this.bropConnections.delete(client);
+					this.bropClients.delete(client);
+				}
+			}
+			
+			// Clean up message cache periodically
+			if (this.messageCache.size > this.maxCacheSize / 2) {
+				const keysToDelete = Array.from(this.messageCache.keys()).slice(0, Math.floor(this.messageCache.size / 2));
+				keysToDelete.forEach(key => this.messageCache.delete(key));
+			}
+			
+			const counts = {
+				bropRequests: this.pendingBropRequests.size,
+				cdpRequests: this.pendingCdpRequests.size,
+				sessions: this.sessionChannels.size,
+				cdpClients: this.cdpClients.size,
+				bropClients: this.bropClients.size,
+				logs: this.logCount,
+				cdpLogs: this.cdpLogCount
+			};
+			
+			if (cleanedSessions > 0 || cleanedTargets > 0) {
+				this.log(`🧹 Cleanup completed - cleaned ${cleanedSessions} stale sessions, ${cleanedTargets} orphaned targets - remaining: BROP=${counts.bropRequests}, CDP=${counts.cdpRequests}, sessions=${counts.sessions}, clients: CDP=${counts.cdpClients}, BROP=${counts.bropClients}, logs: ${counts.logs}+${counts.cdpLogs}`);
+			} else {
+				this.log(`🧹 Cleanup completed - pending: BROP=${counts.bropRequests}, CDP=${counts.cdpRequests}, sessions=${counts.sessions}, clients: CDP=${counts.cdpClients}, BROP=${counts.bropClients}, logs: ${counts.logs}+${counts.cdpLogs}`);
+			}
+			
+		} catch (error) {
+			this.log(`Cleanup failed: ${error.message}`);
 		}
 	}
 
 	async shutdown() {
 		this.log("🛑 Shutting down unified bridge server...");
 		this.running = false;
+
+		// Stop cleanup interval
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval);
+		}
+		
+		// Clear all pending request timeouts
+		for (const [messageId, timeoutId] of this.requestTimeouts.entries()) {
+			clearTimeout(timeoutId);
+		}
+		this.requestTimeouts.clear();
+		
+		// Final cleanup
+		this.performCleanup();
 
 		if (this.bropServer) this.bropServer.close();
 		if (this.extensionServer) this.extensionServer.close();
