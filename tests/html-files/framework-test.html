@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Element Detection Framework Test Page</title>
+    <style>
+        .hidden { display: none; }
+        .pointer-cursor { cursor: pointer; }
+        .interactive { 
+            transition: all 0.3s ease;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .interactive:hover {
+            background-color: #f5f5f5;
+            transform: scale(1.05);
+        }
+        .large-container {
+            width: 2000px;
+            height: 2000px;
+            overflow: auto;
+        }
+        .scrollable {
+            height: 100px;
+            overflow-y: scroll;
+        }
+        .scrollable-content {
+            height: 200px;
+            background: linear-gradient(to bottom, red, blue);
+        }
+    </style>
+</head>
+<body>
+    <!-- Layer 1: HTML Tag Detection Test -->
+    <h1>Element Detection Framework Test</h1>
+    
+    <!-- Standard interactive elements -->
+    <button id="test-button" onclick="alert('clicked')">Test Button</button>
+    <input type="text" id="text-input" placeholder="Enter text here" name="testInput">
+    <input type="email" id="email-input" placeholder="email@example.com" required>
+    <input type="password" id="password-input" placeholder="Password">
+    <input type="checkbox" id="checkbox-input" name="agreement">
+    <input type="radio" id="radio-input" name="choice" value="option1">
+    <select id="select-dropdown" name="country">
+        <option value="us">United States</option>
+        <option value="ca">Canada</option>
+        <option value="uk">United Kingdom</option>
+    </select>
+    <textarea id="textarea-input" placeholder="Enter your message"></textarea>
+    <a href="https://example.com" id="test-link">Test Link</a>
+    <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='%23ddd'/%3E%3C/svg%3E" alt="Test Image" id="test-image">
+    <video id="test-video" width="200" height="100" controls>
+        <source src="test.mp4" type="video/mp4">
+    </video>
+    <audio id="test-audio" controls>
+        <source src="test.mp3" type="audio/mpeg">
+    </audio>
+    <iframe id="test-iframe" src="about:blank" width="300" height="200"></iframe>
+    <canvas id="test-canvas" width="200" height="100"></canvas>
+
+    <!-- Layer 2: ARIA Role Detection Test -->
+    <div role="button" id="aria-button" tabindex="0">ARIA Button</div>
+    <div role="link" id="aria-link" tabindex="0">ARIA Link</div>
+    <div role="textbox" id="aria-textbox" contenteditable="true">ARIA Textbox</div>
+    <div role="checkbox" id="aria-checkbox" tabindex="0" aria-checked="false">ARIA Checkbox</div>
+    <div role="radio" id="aria-radio" tabindex="0" aria-checked="false">ARIA Radio</div>
+    <div role="combobox" id="aria-combobox" tabindex="0">ARIA Combobox</div>
+    <div role="listbox" id="aria-listbox" tabindex="0">ARIA Listbox</div>
+    <div role="slider" id="aria-slider" tabindex="0" aria-valuenow="5" aria-valuemin="0" aria-valuemax="10">ARIA Slider</div>
+    <div role="progressbar" id="aria-progressbar" aria-valuenow="30" aria-valuemin="0" aria-valuemax="100">ARIA Progress</div>
+    <div role="menuitem" id="aria-menuitem" tabindex="0">ARIA Menu Item</div>
+    <div role="tab" id="aria-tab" tabindex="0">ARIA Tab</div>
+    <div role="switch" id="aria-switch" tabindex="0" aria-checked="false">ARIA Switch</div>
+    <div role="searchbox" id="aria-searchbox" contenteditable="true">ARIA Search</div>
+    <nav role="navigation" id="aria-navigation">ARIA Navigation</nav>
+
+    <!-- Layer 3: Event Handler Detection Test -->
+    <div onclick="handleClick()" id="onclick-element">OnClick Element</div>
+    <div onchange="handleChange()" id="onchange-element">OnChange Element</div>
+    <form onsubmit="handleSubmit()" id="onsubmit-element">
+        <input type="submit" value="Submit Form">
+    </form>
+    <div onkeydown="handleKeydown()" id="onkeydown-element" tabindex="0">OnKeydown Element</div>
+    <div onkeyup="handleKeyup()" id="onkeyup-element" tabindex="0">OnKeyup Element</div>
+    <div onmousedown="handleMousedown()" id="onmousedown-element">OnMousedown Element</div>
+    <div onmouseup="handleMouseup()" id="onmouseup-element">OnMouseup Element</div>
+    <div onmouseover="handleMouseover()" id="onmouseover-element">OnMouseover Element</div>
+    <div onfocus="handleFocus()" id="onfocus-element" tabindex="0">OnFocus Element</div>
+    <div onblur="handleBlur()" id="onblur-element" tabindex="0">OnBlur Element</div>
+    <div ondrop="handleDrop()" id="ondrop-element">OnDrop Element</div>
+    <div ondragover="handleDragover()" id="ondragover-element">OnDragover Element</div>
+    <div onpointerdown="handlePointerdown()" id="onpointerdown-element">OnPointerdown Element</div>
+    <div onpointerup="handlePointerup()" id="onpointerup-element">OnPointerup Element</div>
+    <div ontouchstart="handleTouchstart()" id="ontouchstart-element">OnTouchstart Element</div>
+
+    <!-- Layer 4: Accessibility Properties Test -->
+    <div aria-label="Custom Button Label" id="aria-label-element">Element with ARIA Label</div>
+    <div aria-labelledby="label-id" id="aria-labelledby-element">Element with ARIA Labelledby</div>
+    <span id="label-id">Label Text</span>
+    <div aria-describedby="desc-id" id="aria-describedby-element">Element with ARIA Describedby</div>
+    <span id="desc-id">Description Text</span>
+    <div aria-expanded="false" id="aria-expanded-element">Element with ARIA Expanded</div>
+    <div aria-selected="true" id="aria-selected-element">Element with ARIA Selected</div>
+    <div aria-checked="true" id="aria-checked-element">Element with ARIA Checked</div>
+    <div aria-pressed="false" id="aria-pressed-element">Element with ARIA Pressed</div>
+    <div aria-hidden="false" id="aria-hidden-element">Element with ARIA Hidden</div>
+    <div aria-disabled="false" id="aria-disabled-element">Element with ARIA Disabled</div>
+    <div aria-required="true" id="aria-required-element">Element with ARIA Required</div>
+    <div aria-invalid="false" id="aria-invalid-element">Element with ARIA Invalid</div>
+    <div aria-live="polite" id="aria-live-element">Element with ARIA Live</div>
+    <div aria-atomic="true" id="aria-atomic-element">Element with ARIA Atomic</div>
+
+    <!-- Layer 5: CSS Properties Test -->
+    <div class="pointer-cursor" id="cursor-pointer-element">Cursor Pointer Element</div>
+    <div class="interactive" id="interactive-element">Interactive CSS Element</div>
+    <div style="user-select: none; pointer-events: auto;" id="css-properties-element">CSS Properties Element</div>
+    <div style="transform: translateX(10px); transition: all 0.3s;" id="transform-element">Transform Element</div>
+    <div style="outline: 2px solid blue;" id="outline-element">Outline Element</div>
+
+    <!-- Layer 6: Search Element Patterns Test -->
+    <input type="search" placeholder="Search products" id="search-input">
+    <input placeholder="Find something" id="find-input">
+    <input placeholder="Query database" id="query-input">
+    <input placeholder="Lookup user" id="lookup-input">
+    <input placeholder="Filter results" id="filter-input">
+    <input placeholder="Type to search for items" id="type-search-input">
+    <input placeholder="Enter search term" id="enter-term-input">
+    <input placeholder="What are you looking for?" id="what-looking-input">
+    <input placeholder="Enter keyword" id="keyword-input">
+    <input placeholder="Search term" id="term-input">
+
+    <!-- Layer 7: Icon Element Detection Test -->
+    <i class="fa-search icon" id="fa-icon">FontAwesome Icon</i>
+    <i class="material-icons" id="material-icon">search</i>
+    <span class="icon-user" id="icon-class">Icon Class</span>
+    <svg id="svg-icon" width="20" height="20" viewBox="0 0 20 20">
+        <circle cx="10" cy="10" r="8" fill="#ddd"/>
+    </svg>
+    <i class="custom-icon" id="i-icon">Custom Icon</i>
+    <div role="img" id="role-img-element">Role Img Element</div>
+    <img src="" alt="" id="empty-alt-img">
+    <span class="glyph-star" id="glyph-element">Glyph Element</span>
+    <span class="symbol-home" id="symbol-element">Symbol Element</span>
+
+    <!-- Layer 8: Iframe Size Test -->
+    <iframe id="small-iframe" width="50" height="50" src="about:blank"></iframe>
+    <iframe id="valid-iframe" width="300" height="200" src="about:blank"></iframe>
+    <iframe id="extreme-aspect-iframe" width="1000" height="50" src="about:blank"></iframe>
+
+    <!-- Layer 9: ContentEditable Test -->
+    <div contenteditable="true" id="contenteditable-true">Editable Content</div>
+    <div contenteditable="" id="contenteditable-empty">Editable Content Empty</div>
+    <div role="textbox" id="role-textbox-element">Role Textbox</div>
+    <div role="searchbox" id="role-searchbox-element">Role Searchbox</div>
+    <div id="contenteditable-parent" contenteditable="true">
+        <span id="contenteditable-child">Child of Editable</span>
+    </div>
+
+    <!-- Layer 10: Visibility Test -->
+    <div id="visible-element">Visible Element</div>
+    <div id="hidden-element" class="hidden">Hidden Element</div>
+    <div id="zero-width-element" style="width: 0; height: 0;">Zero Size Element</div>
+    <div id="transparent-element" style="opacity: 0;">Transparent Element</div>
+    <div id="visibility-hidden-element" style="visibility: hidden;">Visibility Hidden Element</div>
+    <div id="offscreen-element" style="position: absolute; left: -9999px;">Offscreen Element</div>
+
+    <!-- Layer 11: Scrollability Test -->
+    <div class="scrollable" id="scrollable-element">
+        <div class="scrollable-content">Scrollable Content</div>
+    </div>
+    <div style="overflow: scroll; width: 200px; height: 100px;" id="overflow-scroll-element">
+        <div style="width: 400px; height: 200px;">Overflow Content</div>
+    </div>
+    <div style="overflow: auto; width: 200px; height: 100px;" id="overflow-auto-element">
+        <div style="width: 400px; height: 200px;">Auto Overflow Content</div>
+    </div>
+
+    <!-- Layer 12: Bounding Box Test -->
+    <div id="normal-size-element" style="width: 100px; height: 50px;">Normal Size</div>
+    <div id="tiny-element" style="width: 0.5px; height: 0.5px;">Tiny Element</div>
+    <div class="large-container" id="large-element">Very Large Element</div>
+
+    <!-- Edge Cases and Error Testing -->
+    <div id="null-element">Element for Null Testing</div>
+    <div id="undefined-element">Element for Undefined Testing</div>
+    <script>
+        // Simulate some dynamic event handlers
+        document.getElementById('test-button').addEventListener('click', function() {
+            console.log('Button clicked');
+        });
+        
+        // Functions for testing event handlers
+        function handleClick() { console.log('click'); }
+        function handleChange() { console.log('change'); }
+        function handleSubmit() { console.log('submit'); }
+        function handleKeydown() { console.log('keydown'); }
+        function handleKeyup() { console.log('keyup'); }
+        function handleMousedown() { console.log('mousedown'); }
+        function handleMouseup() { console.log('mouseup'); }
+        function handleMouseover() { console.log('mouseover'); }
+        function handleFocus() { console.log('focus'); }
+        function handleBlur() { console.log('blur'); }
+        function handleDrop() { console.log('drop'); }
+        function handleDragover() { console.log('dragover'); }
+        function handlePointerdown() { console.log('pointerdown'); }
+        function handlePointerup() { console.log('pointerup'); }
+        function handleTouchstart() { console.log('touchstart'); }
+    </script>
+</body>
+</html>

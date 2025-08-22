@@ -1,0 +1,42 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Iframe Test</title>
+</head>
+<body>
+    <h1>Iframe Testing</h1>
+    
+    <!-- Same-origin iframe -->
+    <iframe id="same-origin-iframe" srcdoc="<button id='iframe-button'>Iframe Button</button>" width="300" height="200"></iframe>
+    
+    <!-- Cross-origin iframe (will likely fail) -->
+    <iframe id="cross-origin-iframe" src="https://example.com" width="300" height="200"></iframe>
+    
+    <!-- Data URL iframe -->
+    <iframe id="data-iframe" src="data:text/html,<button onclick='alert("iframe")'>Data Iframe Button</button>" width="300" height="100"></iframe>
+    
+    <!-- Nested iframes -->
+    <iframe id="nested-iframe-parent" srcdoc="
+        <div>Nested Iframe Level 1</div>
+        <iframe id='nested-iframe-child' srcdoc='<button>Nested Level 2 Button</button>' width='200' height='100'></iframe>
+    " width="400" height="200"></iframe>
+    
+    <!-- Elements inside and outside iframe -->
+    <button id="outside-iframe-button">Outside Iframe Button</button>
+    
+    <script>
+        // Test iframe access
+        setTimeout(() => {
+            try {
+                const iframe = document.getElementById('same-origin-iframe');
+                const iframeDoc = iframe.contentDocument;
+                const btn = iframeDoc.getElementById('iframe-button');
+                console.log('Iframe button found:', !!btn);
+            } catch (e) {
+                console.log('Iframe access failed:', e.message);
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

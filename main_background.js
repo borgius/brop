@@ -43,10 +43,9 @@ class MainBackground {
 
 		this.setupErrorHandlers();
 		this.setupPopupMessageHandler();
-		this.setupOptimizedKeepalive();
+		this.setupStorageKeepalive();
 		this.setupTabHandlers();
 		this.setupMemoryManagement();
-		this.monitorHealth();
 		this.connectToBridge();
 	}
 

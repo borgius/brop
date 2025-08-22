@@ -35,6 +35,17 @@ if (typeof window.BROP === "undefined") {
 					});
 					return true; // Keep message channel open for async response
 				}
+				if (message.type === "PING") {
+					// Respond to ping requests to verify content script availability
+					sendResponse({
+						success: true,
+						pong: true,
+						contentScript: "BROP Content Script",
+						timestamp: Date.now(),
+						url: window.location.href
+					});
+					return true; // Keep message channel open for async response
+				}
 			});
 		}
 
@@ -135,6 +146,9 @@ if (typeof window.BROP === "undefined") {
 
 				case "get_simplified_dom":
 					return await this.getSimplifiedDOM(command.params);
+
+				case "detect_interactive_elements":
+					return this.detectInteractiveElements(command.params);
 
 				default:
 					throw new Error(`Unknown command type: ${command.type}`);
@@ -367,7 +381,14 @@ if (typeof window.BROP === "undefined") {
 
 		getElement(params) {
 			if (params.get_all) {
-				const elements = document.querySelectorAll(params.selector);
+				// Use safe querySelector to handle invalid selectors
+				let elements;
+				try {
+					elements = document.querySelectorAll(params.selector);
+				} catch (error) {
+					console.warn(`Invalid CSS selector: ${params.selector}`, error);
+					elements = [];
+				}
 				return {
 					elements: Array.from(elements).map((el) => this.getElementInfo(el)),
 				};
@@ -446,6 +467,1238 @@ if (typeof window.BROP === "undefined") {
 			);
 			console.log("[BROP Content] Simplified DOM format:", result?.format);
 			return result;
+		}
+
+		detectInteractiveElements(params) {
+			// Load element detection framework if not already available
+			if (!window.ElementDetectionFramework) {
+				this.loadElementDetectionFramework();
+			}
+
+			if (!window.ElementDetectionFramework) {
+				throw new Error("Element Detection Framework not available");
+			}
+
+			console.log("[BROP Content] Element detection params:", params);
+			const detector = new window.ElementDetectionFramework();
+			const result = detector.detectInteractiveElements(params);
+			console.log("[BROP Content] Element detection result:", {
+				totalDetected: result.total_detected,
+				detectionLayers: result.detection_layers,
+				timestamp: result.timestamp,
+			});
+			return result;
+		}
+
+		loadElementDetectionFramework() {
+			// Element Detection Framework for Browser-Use Style Content Understanding
+			// This implements comprehensive element detection with 14 layers
+			window.ElementDetectionFramework = class {
+				constructor() {
+					this.initializeDetectionLayers();
+				}
+
+				// CSS selector escaping utility
+				escapeCSSSelector(selector) {
+					// Use CSS.escape if available (modern browsers)
+					if (typeof CSS !== 'undefined' && CSS.escape) {
+						return CSS.escape(selector);
+					}
+					// Fallback for older browsers - escape special CSS characters
+					return selector.replace(/([^\w\s-])/g, '\\$1');
+				}
+
+				// Safe querySelectorAll wrapper
+				safeQuerySelectorAll(selector) {
+					try {
+						return document.querySelectorAll(selector);
+					} catch (error) {
+						console.warn(`Invalid CSS selector: ${selector}`, error);
+						return [];
+					}
+				}
+
+				initializeDetectionLayers() {
+					// Layer 1: HTML Tag Detection (10 tags)
+					this.interactiveHtmlTags = new Set([
+						"button",
+						"input",
+						"select",
+						"textarea",
+						"a",
+						"img",
+						"video",
+						"audio",
+						"iframe",
+						"canvas",
+					]);
+
+					// Layer 2: ARIA Role Detection (14 roles)
+					this.interactiveAriaRoles = new Set([
+						"button",
+						"link",
+						"textbox",
+						"checkbox",
+						"radio",
+						"combobox",
+						"listbox",
+						"slider",
+						"progressbar",
+						"menuitem",
+						"tab",
+						"switch",
+						"searchbox",
+						"navigation",
+					]);
+
+					// Layer 3: Event Handler Detection (12+ handlers)
+					this.eventHandlers = [
+						"onclick",
+						"onchange",
+						"onsubmit",
+						"onkeydown",
+						"onkeyup",
+						"onmousedown",
+						"onmouseup",
+						"onmouseover",
+						"onfocus",
+						"onblur",
+						"ondrop",
+						"ondragover",
+						"onpointerdown",
+						"onpointerup",
+						"ontouchstart",
+					];
+
+					// Layer 4: Accessibility Properties (13 properties)
+					this.accessibilityProps = [
+						"aria-label",
+						"aria-labelledby",
+						"aria-describedby",
+						"aria-expanded",
+						"aria-selected",
+						"aria-checked",
+						"aria-pressed",
+						"aria-hidden",
+						"aria-disabled",
+						"aria-required",
+						"aria-invalid",
+						"aria-live",
+						"aria-atomic",
+					];
+
+					// Layer 5: CSS Properties for Interactivity (25+ properties)
+					this.interactiveCssProperties = [
+						"cursor",
+						"pointer-events",
+						"user-select",
+						"touch-action",
+						"outline",
+						"border",
+						"background",
+						"box-shadow",
+						"transform",
+						"transition",
+						"animation",
+						"opacity",
+						"visibility",
+						"display",
+						"position",
+						"z-index",
+						"overflow",
+						"text-decoration",
+						"color",
+						"font-weight",
+						"border-radius",
+						"padding",
+						"margin",
+						"width",
+						"height",
+					];
+
+					// Layer 6: Search Element Patterns (10 patterns)
+					this.searchPatterns = [
+						/search/i,
+						/find/i,
+						/query/i,
+						/lookup/i,
+						/filter/i,
+						/type.{0,20}search/i,
+						/enter.{0,20}term/i,
+						/what.*looking/i,
+						/keyword/i,
+						/term/i,
+					];
+
+					// Layer 7: Icon Element Patterns
+					this.iconSelectors = [
+						'[class*="icon"]',
+						'[class*="fa-"]',
+						'[class*="material-"]',
+						"svg",
+						"i[class]",
+						'[role="img"]',
+						'img[alt=""]',
+						'[class*="glyph"]',
+						'[class*="symbol"]',
+					];
+
+					// Layer 8: Iframe Size Thresholds
+					this.iframeSizeThresholds = {
+						minWidth: 100,
+						minHeight: 100,
+						maxAspectRatio: 10,
+					};
+
+					// Layer 9: ContentEditable Detection
+					this.contentEditableSelectors = [
+						'[contenteditable="true"]',
+						'[contenteditable=""]',
+						'[role="textbox"]',
+						'[role="searchbox"]',
+					];
+
+					// Confidence scoring structure
+					this.confidenceLevels = {
+						HIGH: "HIGH",
+						MEDIUM: "MEDIUM",
+						LOW: "LOW",
+					};
+
+					this.detectionWeights = {
+						htmlTag: 0.8,
+						ariaRole: 0.9,
+						eventHandler: 0.7,
+						accessibilityProps: 0.6,
+						cssProperties: 0.5,
+						searchPattern: 0.4,
+						iconElement: 0.3,
+						iframeFilter: 0.2,
+						contentEditable: 0.8,
+						visibility: 0.9,
+						scrollability: 0.4,
+						boundingBox: 0.7,
+					};
+				}
+
+				// Main detection method that runs all 14 layers
+				detectInteractiveElements(options = {}) {
+					const config = {
+						includeHidden: options.includeHidden || false,
+						includeCoordinates: options.includeCoordinates !== false,
+						minConfidence: options.minConfidence || "LOW",
+						maxElements: options.maxElements || 1000,
+						...options,
+					};
+
+					const detectedElements = [];
+					// Performance consideration: Querying all elements can be expensive for large DOMs
+					// Consider implementing chunking or element limit checks for very large pages
+					const allElements = this.safeQuerySelectorAll("*");
+
+					for (
+						let i = 0;
+						i < allElements.length &&
+						detectedElements.length < config.maxElements;
+						i++
+					) {
+						const element = allElements[i];
+						const detection = this.analyzeElement(element, config);
+
+						if (
+							detection &&
+							this.meetsConfidenceThreshold(
+								detection.confidence,
+								config.minConfidence,
+							)
+						) {
+							detectedElements.push(detection);
+						}
+					}
+
+					return {
+						elements: detectedElements,
+						total_detected: detectedElements.length,
+						detection_layers: 14,
+						timestamp: new Date().toISOString(),
+					};
+				}
+
+				// Comprehensive element analysis through all 14 layers
+				analyzeElement(element, config) {
+					const detectionReasons = [];
+					let confidenceScore = 0;
+
+					// Layer 1: HTML Tag Detection
+					const htmlTagResult = this.detectHtmlTag(element);
+					if (htmlTagResult.detected) {
+						detectionReasons.push(`HTML_TAG: ${htmlTagResult.tag}`);
+						confidenceScore +=
+							this.detectionWeights.htmlTag * htmlTagResult.weight;
+					}
+
+					// Layer 2: ARIA Role Detection
+					const ariaRoleResult = this.detectAriaRole(element);
+					if (ariaRoleResult.detected) {
+						detectionReasons.push(`ARIA_ROLE: ${ariaRoleResult.role}`);
+						confidenceScore +=
+							this.detectionWeights.ariaRole * ariaRoleResult.weight;
+					}
+
+					// Layer 3: Event Handler Detection
+					const eventHandlerResult = this.detectEventHandlers(element);
+					if (eventHandlerResult.detected) {
+						detectionReasons.push(
+							`EVENT_HANDLERS: ${eventHandlerResult.handlers.join(", ")}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.eventHandler * eventHandlerResult.weight;
+					}
+
+					// Layer 4: Accessibility Properties Detection
+					const accessibilityResult =
+						this.detectAccessibilityProperties(element);
+					if (accessibilityResult.detected) {
+						detectionReasons.push(
+							`ACCESSIBILITY: ${accessibilityResult.properties.join(", ")}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.accessibilityProps *
+							accessibilityResult.weight;
+					}
+
+					// Layer 5: CSS Properties Check
+					const cssPropertiesResult = this.detectCssProperties(element);
+					if (cssPropertiesResult.detected) {
+						detectionReasons.push(
+							`CSS_INTERACTIVE: ${cssPropertiesResult.properties.join(", ")}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.cssProperties * cssPropertiesResult.weight;
+					}
+
+					// Layer 6: Search Element Patterns
+					const searchPatternResult = this.detectSearchPatterns(element);
+					if (searchPatternResult.detected) {
+						detectionReasons.push(
+							`SEARCH_PATTERN: ${searchPatternResult.patterns.join(", ")}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.searchPattern * searchPatternResult.weight;
+					}
+
+					// Layer 7: Icon Element Detection
+					const iconElementResult = this.detectIconElement(element);
+					if (iconElementResult.detected) {
+						detectionReasons.push(`ICON_ELEMENT: ${iconElementResult.type}`);
+						confidenceScore +=
+							this.detectionWeights.iconElement * iconElementResult.weight;
+					}
+
+					// Layer 8: Iframe Size Filtering
+					const iframeFilterResult = this.detectIframeFilter(element);
+					if (iframeFilterResult.detected) {
+						detectionReasons.push(
+							`IFRAME_FILTER: ${iframeFilterResult.reason}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.iframeFilter * iframeFilterResult.weight;
+					}
+
+					// Layer 9: ContentEditable Detection
+					const contentEditableResult = this.detectContentEditable(element);
+					if (contentEditableResult.detected) {
+						detectionReasons.push(
+							`CONTENT_EDITABLE: ${contentEditableResult.type}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.contentEditable *
+							contentEditableResult.weight;
+					}
+
+					// Layer 10: Visibility Calculation (4 sub-layers)
+					const visibilityResult = this.calculateVisibility(element);
+					if (visibilityResult.visible) {
+						detectionReasons.push(`VISIBILITY: ${visibilityResult.method}`);
+						confidenceScore +=
+							this.detectionWeights.visibility * visibilityResult.weight;
+					}
+
+					// Layer 11: Scrollability Detection (3 methods)
+					const scrollabilityResult = this.detectScrollability(element);
+					if (scrollabilityResult.detected) {
+						detectionReasons.push(
+							`SCROLLABLE: ${scrollabilityResult.methods.join(", ")}`,
+						);
+						confidenceScore +=
+							this.detectionWeights.scrollability * scrollabilityResult.weight;
+					}
+
+					// Layer 12: Bounding Box Filtering
+					const boundingBoxResult = this.filterBoundingBox(element);
+					if (boundingBoxResult.valid) {
+						detectionReasons.push(`BOUNDING_BOX: ${boundingBoxResult.reason}`);
+						confidenceScore +=
+							this.detectionWeights.boundingBox * boundingBoxResult.weight;
+					}
+
+					// Layer 13: Coordinate Transformation
+					const coordinatesResult = this.transformCoordinates(element);
+
+					// Layer 14: Serialization Format
+					const serializedData = this.serializeElementData(
+						element,
+						detectionReasons,
+						confidenceScore,
+						coordinatesResult,
+					);
+
+					// Return null if no detection reasons found
+					if (detectionReasons.length === 0) {
+						return null;
+					}
+
+					// Calculate final confidence level
+					const confidence = this.calculateConfidenceLevel(confidenceScore);
+
+					return {
+						element: element,
+						selector: this.generateSelector(element),
+						confidence: confidence,
+						confidenceScore: confidenceScore,
+						detectionReasons: detectionReasons,
+						coordinates: coordinatesResult,
+						serialized: serializedData,
+						visible: visibilityResult.visible,
+					};
+				}
+
+				// Layer 1: HTML Tag Detection
+				detectHtmlTag(element) {
+					const tag = element.tagName.toLowerCase();
+					if (this.interactiveHtmlTags.has(tag)) {
+						const weight = tag === "button" || tag === "a" ? 1.0 : 0.8;
+						return { detected: true, tag: tag, weight: weight };
+					}
+					return { detected: false };
+				}
+
+				// Layer 2: ARIA Role Detection
+				detectAriaRole(element) {
+					const role = element.getAttribute("role");
+					if (role && this.interactiveAriaRoles.has(role)) {
+						const weight = ["button", "link", "textbox"].includes(role)
+							? 1.0
+							: 0.8;
+						return { detected: true, role: role, weight: weight };
+					}
+					return { detected: false };
+				}
+
+				// Layer 3: Event Handler Detection
+				detectEventHandlers(element) {
+					const foundHandlers = [];
+
+					// Check for inline event handlers
+					for (const handler of this.eventHandlers) {
+						if (element.hasAttribute(handler) || element[handler]) {
+							foundHandlers.push(handler);
+						}
+					}
+
+					// Check for event listeners (approximate detection)
+					const eventListenerProps = [
+						"onclick",
+						"onchange",
+						"onsubmit",
+						"onkeydown",
+					];
+					for (const prop of eventListenerProps) {
+						if (typeof element[prop] === "function") {
+							foundHandlers.push(`${prop}_listener`);
+						}
+					}
+
+					if (foundHandlers.length > 0) {
+						const weight =
+							foundHandlers.length >= 3
+								? 1.0
+								: 0.6 + foundHandlers.length * 0.2;
+						return { detected: true, handlers: foundHandlers, weight: weight };
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 4: Accessibility Properties Detection
+				detectAccessibilityProperties(element) {
+					const foundProperties = [];
+
+					for (const prop of this.accessibilityProps) {
+						if (element.hasAttribute(prop)) {
+							foundProperties.push(prop);
+						}
+					}
+
+					if (foundProperties.length > 0) {
+						const weight =
+							foundProperties.length >= 3
+								? 1.0
+								: 0.5 + foundProperties.length * 0.2;
+						return {
+							detected: true,
+							properties: foundProperties,
+							weight: weight,
+						};
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 5: CSS Properties Check
+				detectCssProperties(element) {
+					const computedStyle = window.getComputedStyle(element);
+					const interactiveProperties = [];
+
+					// Check cursor property
+					if (computedStyle.cursor === "pointer") {
+						interactiveProperties.push("cursor:pointer");
+					}
+
+					// Check pointer-events
+					if (computedStyle.pointerEvents !== "none") {
+						interactiveProperties.push("pointer-events:enabled");
+					}
+
+					// Check user-select
+					if (computedStyle.userSelect !== "none") {
+						interactiveProperties.push("user-select:enabled");
+					}
+
+					// Check for transform/transition (often indicates interactivity)
+					if (computedStyle.transform !== "none") {
+						interactiveProperties.push("transform:applied");
+					}
+
+					if (computedStyle.transition !== "all 0s ease 0s") {
+						interactiveProperties.push("transition:defined");
+					}
+
+					// Check for outline (focus indicators)
+					if (computedStyle.outline !== "none") {
+						interactiveProperties.push("outline:defined");
+					}
+
+					// Check for hover-related properties (approximate)
+					// Handle SVG elements where className is SVGAnimatedString
+					const className = typeof element.className === 'string' 
+						? element.className 
+						: element.className?.baseVal || '';
+					
+					if (
+						element.style.cssText.includes(":hover") ||
+						className.includes("hover") ||
+						className.includes("focus")
+					) {
+						interactiveProperties.push("hover-states:detected");
+					}
+
+					if (interactiveProperties.length > 0) {
+						const weight =
+							interactiveProperties.length >= 3
+								? 0.8
+								: 0.3 + interactiveProperties.length * 0.15;
+						return {
+							detected: true,
+							properties: interactiveProperties,
+							weight: weight,
+						};
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 6: Search Element Patterns
+				detectSearchPatterns(element) {
+					const textContent = (element.textContent || "").toLowerCase();
+					const placeholder = (element.placeholder || "").toLowerCase();
+					const title = (element.title || "").toLowerCase();
+					const ariaLabel = (
+						element.getAttribute("aria-label") || ""
+					).toLowerCase();
+					const allText = `${textContent} ${placeholder} ${title} ${ariaLabel}`;
+
+					const matchedPatterns = [];
+
+					for (let i = 0; i < this.searchPatterns.length; i++) {
+						const pattern = this.searchPatterns[i];
+						if (pattern.test(allText)) {
+							matchedPatterns.push(`pattern_${i + 1}`);
+						}
+					}
+
+					if (matchedPatterns.length > 0) {
+						const weight =
+							matchedPatterns.length >= 2
+								? 0.8
+								: 0.4 + matchedPatterns.length * 0.2;
+						return {
+							detected: true,
+							patterns: matchedPatterns,
+							weight: weight,
+						};
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 7: Icon Element Detection
+				detectIconElement(element) {
+					const tag = element.tagName.toLowerCase();
+
+					// SVG elements
+					if (tag === "svg" || element.closest("svg")) {
+						return { detected: true, type: "svg_icon", weight: 0.6 };
+					}
+
+					// Icon classes
+					// Handle SVG elements where className is SVGAnimatedString
+					const className = typeof element.className === 'string' 
+						? element.className 
+						: element.className?.baseVal || '';
+					
+					for (const iconClass of [
+						"icon",
+						"fa-",
+						"material-",
+						"glyph",
+						"symbol",
+					]) {
+						if (className.includes(iconClass)) {
+							return { detected: true, type: "class_icon", weight: 0.5 };
+						}
+					}
+
+					// Role=img
+					if (element.getAttribute("role") === "img") {
+						return { detected: true, type: "role_img", weight: 0.4 };
+					}
+
+					// Empty alt images (often decorative icons)
+					if (tag === "img" && element.alt === "") {
+						return { detected: true, type: "decorative_img", weight: 0.3 };
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 8: Iframe Size Filtering
+				detectIframeFilter(element) {
+					if (element.tagName.toLowerCase() !== "iframe") {
+						return { detected: false };
+					}
+
+					const rect = element.getBoundingClientRect();
+					const { minWidth, minHeight, maxAspectRatio } =
+						this.iframeSizeThresholds;
+
+					if (rect.width < minWidth || rect.height < minHeight) {
+						return { detected: false, reason: "too_small" };
+					}
+
+					const aspectRatio = Math.max(
+						rect.width / rect.height,
+						rect.height / rect.width,
+					);
+					if (aspectRatio > maxAspectRatio) {
+						return { detected: false, reason: "extreme_aspect_ratio" };
+					}
+
+					return { detected: true, reason: "size_valid", weight: 0.7 };
+				}
+
+				// Layer 9: ContentEditable Detection
+				detectContentEditable(element) {
+					const contentEditable = element.contentEditable;
+					const role = element.getAttribute("role");
+
+					if (contentEditable === "true" || contentEditable === "") {
+						return {
+							detected: true,
+							type: "contenteditable_true",
+							weight: 0.9,
+						};
+					}
+
+					if (role === "textbox" || role === "searchbox") {
+						return { detected: true, type: "role_textbox", weight: 0.8 };
+					}
+
+					// Check if descendant of contenteditable
+					let parent = element.parentElement;
+					while (parent) {
+						if (parent.contentEditable === "true") {
+							return {
+								detected: true,
+								type: "contenteditable_descendant",
+								weight: 0.6,
+							};
+						}
+						parent = parent.parentElement;
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 10: Visibility Calculation (4 sub-layers)
+				calculateVisibility(element) {
+					const methods = [];
+					let visible = true;
+
+					// Sub-layer 1: Offset dimensions
+					if (element.offsetWidth === 0 || element.offsetHeight === 0) {
+						visible = false;
+						methods.push("offset_zero");
+					}
+
+					// Sub-layer 2: Computed style
+					const computedStyle = window.getComputedStyle(element);
+					if (
+						computedStyle.display === "none" ||
+						computedStyle.visibility === "hidden" ||
+						computedStyle.opacity === "0"
+					) {
+						visible = false;
+						methods.push("style_hidden");
+					}
+
+					// Sub-layer 3: Bounding rectangle
+					const rect = element.getBoundingClientRect();
+					if (rect.width === 0 || rect.height === 0) {
+						visible = false;
+						methods.push("rect_zero");
+					}
+
+					// Sub-layer 4: Viewport intersection
+					const viewportWidth = window.innerWidth;
+					const viewportHeight = window.innerHeight;
+					if (
+						rect.right < 0 ||
+						rect.left > viewportWidth ||
+						rect.bottom < 0 ||
+						rect.top > viewportHeight
+					) {
+						methods.push("outside_viewport");
+					} else {
+						methods.push("in_viewport");
+					}
+
+					const weight = visible ? 1.0 : 0.1;
+					return {
+						visible: visible,
+						method: methods.join("|"),
+						weight: weight,
+					};
+				}
+
+				// Layer 11: Scrollability Detection (3 methods)
+				detectScrollability(element) {
+					const methods = [];
+
+					// Method 1: Scroll dimensions
+					if (
+						element.scrollWidth > element.clientWidth ||
+						element.scrollHeight > element.clientHeight
+					) {
+						methods.push("scroll_dimensions");
+					}
+
+					// Method 2: Overflow styles
+					const computedStyle = window.getComputedStyle(element);
+					if (
+						computedStyle.overflow === "scroll" ||
+						computedStyle.overflow === "auto" ||
+						computedStyle.overflowX === "scroll" ||
+						computedStyle.overflowY === "scroll"
+					) {
+						methods.push("overflow_style");
+					}
+
+					// Method 3: Scroll position capability
+					try {
+						const originalScrollTop = element.scrollTop;
+						element.scrollTop += 1;
+						if (element.scrollTop !== originalScrollTop) {
+							methods.push("scroll_position");
+							element.scrollTop = originalScrollTop; // Reset
+						}
+					} catch (e) {
+						// Scroll test failed - should log the error for debugging
+						console.debug("Scroll test failed:", e);
+					}
+
+					if (methods.length > 0) {
+						const weight = methods.length >= 2 ? 0.8 : 0.4;
+						return { detected: true, methods: methods, weight: weight };
+					}
+
+					return { detected: false };
+				}
+
+				// Layer 12: Bounding Box Filtering
+				filterBoundingBox(element) {
+					const rect = element.getBoundingClientRect();
+
+					// Check minimum size
+					if (rect.width < 1 || rect.height < 1) {
+						return { valid: false, reason: "too_small" };
+					}
+
+					// Check maximum size (prevent full-page elements)
+					const viewportWidth = window.innerWidth;
+					const viewportHeight = window.innerHeight;
+
+					if (
+						rect.width > viewportWidth * 0.95 &&
+						rect.height > viewportHeight * 0.95
+					) {
+						return { valid: false, reason: "too_large" };
+					}
+
+					// 99% containment rule - element should be mostly within its container
+					let containmentScore = 1.0;
+					const parent = element.parentElement;
+					if (parent) {
+						try {
+							const parentRect = parent.getBoundingClientRect();
+							if (parentRect) {
+								const overlapArea = this.calculateOverlapArea(rect, parentRect);
+								const elementArea = rect.width * rect.height;
+								containmentScore =
+									elementArea > 0 ? overlapArea / elementArea : 0;
+							}
+						} catch (e) {
+							console.debug("Error calculating parent rectangle:", e);
+							containmentScore = 1.0; // Default to valid containment if error
+						}
+					}
+
+					if (containmentScore < 0.99) {
+						return {
+							valid: false,
+							reason: "poor_containment",
+							containmentScore: containmentScore,
+						};
+					}
+
+					return {
+						valid: true,
+						reason: "size_valid",
+						weight: 0.8,
+						containmentScore: containmentScore,
+					};
+				}
+
+				// Layer 13: Coordinate Transformation
+				transformCoordinates(element) {
+					const rect = element.getBoundingClientRect();
+
+					// Get the element's position relative to the document
+					const scrollLeft =
+						window.pageXOffset || document.documentElement.scrollLeft;
+					const scrollTop =
+						window.pageYOffset || document.documentElement.scrollTop;
+
+					return {
+						// Viewport coordinates
+						viewport: {
+							x: Math.round(rect.left),
+							y: Math.round(rect.top),
+							width: Math.round(rect.width),
+							height: Math.round(rect.height),
+							right: Math.round(rect.right),
+							bottom: Math.round(rect.bottom),
+						},
+						// Document coordinates
+						document: {
+							x: Math.round(rect.left + scrollLeft),
+							y: Math.round(rect.top + scrollTop),
+							width: Math.round(rect.width),
+							height: Math.round(rect.height),
+						},
+						// Center point (useful for clicking)
+						center: {
+							x: Math.round(rect.left + rect.width / 2),
+							y: Math.round(rect.top + rect.height / 2),
+						},
+						// Iframe transformation (if applicable)
+						iframe: this.getIframeTransformation(element),
+					};
+				}
+
+				// Layer 14: Serialization Format
+				serializeElementData(
+					element,
+					detectionReasons,
+					confidenceScore,
+					coordinates,
+				) {
+					const tag = element.tagName.toLowerCase();
+
+					return {
+						// Basic element info
+						tag: tag,
+						id: element.id || null,
+						classes: (() => {
+							// Handle SVG elements where className is SVGAnimatedString
+							const className = typeof element.className === 'string' 
+								? element.className 
+								: element.className?.baseVal || '';
+							return className ? className.split(" ").filter((c) => c.length > 0) : [];
+						})(),
+
+						// Text content
+						text: this.getElementText(element),
+						value: this.getElementValue(element),
+						placeholder: element.placeholder || null,
+
+						// Attributes
+						attributes: this.getRelevantAttributes(element),
+
+						// Detection metadata
+						confidence_score: confidenceScore,
+						detection_reasons: detectionReasons,
+						detection_count: detectionReasons.length,
+
+						// Position and visibility
+						coordinates: coordinates,
+						visible: !!coordinates,
+
+						// Interaction info
+						clickable: this.isElementClickable(element),
+						focusable: this.isElementFocusable(element),
+
+						// Selector for targeting
+						selector: this.generateSelector(element),
+
+						// LLM-optimized description
+						description: this.generateLLMDescription(element, detectionReasons),
+					};
+				}
+
+				// Helper methods for the framework
+
+				calculateOverlapArea(rect1, rect2) {
+					const left = Math.max(rect1.left, rect2.left);
+					const right = Math.min(rect1.right, rect2.right);
+					const top = Math.max(rect1.top, rect2.top);
+					const bottom = Math.min(rect1.bottom, rect2.bottom);
+
+					if (left < right && top < bottom) {
+						return (right - left) * (bottom - top);
+					}
+					return 0;
+				}
+
+				getIframeTransformation(element) {
+					// Check if element is inside an iframe
+					try {
+						let currentWindow = window;
+						let frameElement = currentWindow.frameElement;
+						const transformations = [];
+
+						while (frameElement) {
+							const frameRect = frameElement.getBoundingClientRect();
+							transformations.push({
+								frame: frameElement,
+								offset: {
+									x: frameRect.left,
+									y: frameRect.top,
+								},
+							});
+
+							currentWindow = currentWindow.parent;
+							frameElement = currentWindow.frameElement;
+						}
+
+						return transformations.length > 0 ? transformations : null;
+					} catch (e) {
+						// Handle cross-origin iframe access error
+						console.debug("Cross-origin iframe access denied:", e);
+						return null;
+					}
+				}
+
+				getElementText(element) {
+					const tag = element.tagName.toLowerCase();
+
+					if (tag === "input" || tag === "textarea") {
+						return element.value || element.placeholder || "";
+					}
+
+					if (tag === "img") {
+						return element.alt || "";
+					}
+
+					// Get direct text content, excluding child elements
+					let text = "";
+					for (const node of element.childNodes) {
+						if (node.nodeType === Node.TEXT_NODE) {
+							text += `${node.textContent.trim()} `;
+						}
+					}
+
+					return text.trim().substring(0, 200);
+				}
+
+				getElementValue(element) {
+					const tag = element.tagName.toLowerCase();
+
+					if (tag === "input" || tag === "textarea") {
+						if (element.type === "checkbox" || element.type === "radio") {
+							return element.checked ? "checked" : "unchecked";
+						}
+						return element.value || "";
+					}
+
+					if (tag === "select") {
+						return element.value || "";
+					}
+
+					return "";
+				}
+
+				getRelevantAttributes(element) {
+					const relevant = {};
+					const importantAttrs = [
+						"type",
+						"name",
+						"value",
+						"href",
+						"src",
+						"alt",
+						"title",
+						"role",
+						"tabindex",
+						"disabled",
+						"readonly",
+						"required",
+						"data-testid",
+						"data-test",
+						"aria-label",
+						"aria-labelledby",
+					];
+
+					for (const attr of importantAttrs) {
+						const value = element.getAttribute(attr);
+						if (value !== null) {
+							relevant[attr] = value;
+						}
+					}
+
+					return relevant;
+				}
+
+				isElementClickable(element) {
+					const tag = element.tagName.toLowerCase();
+					const role = element.getAttribute("role");
+
+					// Direct clickable elements
+					if (["button", "a", "input", "select"].includes(tag)) {
+						return true;
+					}
+
+					// Role-based clickable
+					if (["button", "link", "menuitem", "tab"].includes(role)) {
+						return true;
+					}
+
+					// Has click handlers
+					if (element.onclick || element.hasAttribute("onclick")) {
+						return true;
+					}
+
+					// CSS cursor pointer
+					const computedStyle = window.getComputedStyle(element);
+					if (computedStyle.cursor === "pointer") {
+						return true;
+					}
+
+					return false;
+				}
+
+				isElementFocusable(element) {
+					const tag = element.tagName.toLowerCase();
+
+					// Naturally focusable elements
+					if (["input", "textarea", "select", "button", "a"].includes(tag)) {
+						return !element.disabled;
+					}
+
+					// Explicit tabindex
+					const tabindex = element.getAttribute("tabindex");
+					if (tabindex !== null) {
+						return Number.parseInt(tabindex, 10) >= 0;
+					}
+
+					// Contenteditable
+					if (element.contentEditable === "true") {
+						return true;
+					}
+
+					return false;
+				}
+
+				generateSelector(element) {
+					// Use ID if unique
+					if (element.id) {
+						const escapedId = this.escapeCSSSelector(element.id);
+						const idSelector = `#${escapedId}`;
+						if (this.safeQuerySelectorAll(idSelector).length === 1) {
+							return idSelector;
+						}
+					}
+
+					// Use data-testid if available
+					const testId =
+						element.getAttribute("data-testid") ||
+						element.getAttribute("data-test");
+					if (testId) {
+						return `[data-testid="${testId}"]`;
+					}
+
+					// Use meaningful classes
+					const meaningfulClasses = Array.from(element.classList).filter(
+						(cls) =>
+							!cls.match(/^(css-|_|sc-|jsx-|MuiBox-|makeStyles)/) &&
+							cls.length > 2,
+					);
+
+					if (meaningfulClasses.length > 0) {
+						const escapedClass = this.escapeCSSSelector(meaningfulClasses[0]);
+						const classSelector = `.${escapedClass}`;
+						if (this.safeQuerySelectorAll(classSelector).length <= 5) {
+							return classSelector;
+						}
+					}
+
+					// Build path-based selector
+					const path = [];
+					let current = element;
+
+					while (current && current !== document.body) {
+						let selector = current.tagName.toLowerCase();
+
+						if (current.type) {
+							selector += `[type="${current.type}"]`;
+						}
+
+						const siblings = Array.from(
+							current.parentElement?.children || [],
+						).filter((el) => el.tagName === current.tagName);
+
+						if (siblings.length > 1) {
+							const index = siblings.indexOf(current);
+							selector += `:nth-of-type(${index + 1})`;
+						}
+
+						path.unshift(selector);
+						current = current.parentElement;
+
+						// Limit path depth
+						if (path.length >= 3) break;
+					}
+
+					return path.join(" > ");
+				}
+
+				generateLLMDescription(element, detectionReasons) {
+					const tag = element.tagName.toLowerCase();
+					const text = this.getElementText(element);
+					const value = this.getElementValue(element);
+
+					let description = this.getElementTypeDescription(element);
+
+					if (text && text.length > 0) {
+						description += `: "${text.substring(0, 50)}"`;
+					}
+
+					if (value && value !== text && value.length > 0) {
+						description += ` (value: "${value}")`;
+					}
+
+					// Add detection context
+					if (detectionReasons.length > 0) {
+						const primaryReasons = detectionReasons.slice(0, 3).join(", ");
+						description += ` [Detected by: ${primaryReasons}]`;
+					}
+
+					return description;
+				}
+
+				getElementTypeDescription(element) {
+					const tag = element.tagName.toLowerCase();
+					const role = element.getAttribute("role");
+					const type = element.type;
+
+					if (role) {
+						return role.charAt(0).toUpperCase() + role.slice(1);
+					}
+
+					switch (tag) {
+						case "button":
+							return "Button";
+						case "a":
+							return element.href ? "Link" : "Anchor";
+						case "input":
+							switch (type) {
+								case "submit":
+									return "Submit button";
+								case "button":
+									return "Input button";
+								case "checkbox":
+									return "Checkbox";
+								case "radio":
+									return "Radio button";
+								case "password":
+									return "Password field";
+								case "email":
+									return "Email field";
+								case "search":
+									return "Search field";
+								default:
+									return "Text input";
+							}
+						case "textarea":
+							return "Text area";
+						case "select":
+							return "Dropdown";
+						case "img":
+							return "Image";
+						case "video":
+							return "Video";
+						case "audio":
+							return "Audio";
+						case "iframe":
+							return "Frame";
+						case "canvas":
+							return "Canvas";
+						default:
+							return tag.charAt(0).toUpperCase() + tag.slice(1);
+					}
+				}
+
+				calculateConfidenceLevel(score) {
+					if (score >= 1.5) return this.confidenceLevels.HIGH;
+					if (score >= 0.8) return this.confidenceLevels.MEDIUM;
+					return this.confidenceLevels.LOW;
+				}
+
+				meetsConfidenceThreshold(confidence, threshold) {
+					const levels = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+					return levels[confidence] >= levels[threshold];
+				}
+			};
 		}
 
 		loadDOMSimplifier() {
@@ -722,8 +1975,9 @@ if (typeof window.BROP === "undefined") {
 					);
 
 					if (meaningfulClasses.length > 0) {
-						const classSelector = `.${meaningfulClasses[0]}`;
-						if (document.querySelectorAll(classSelector).length <= 5) {
+						const escapedClass = this.escapeCSSSelector(meaningfulClasses[0]);
+						const classSelector = `.${escapedClass}`;
+						if (this.safeQuerySelectorAll(classSelector).length <= 5) {
 							return classSelector;
 						}
 					}
@@ -1217,7 +2471,7 @@ if (typeof window.BROP === "undefined") {
 			});
 
 			// Clean up intervals and event listeners on page unload
-			window.addEventListener('beforeunload', () => {
+			window.addEventListener("beforeunload", () => {
 				if (this.keepaliveInterval) {
 					clearInterval(this.keepaliveInterval);
 					this.keepaliveInterval = null;
@@ -1226,18 +2480,22 @@ if (typeof window.BROP === "undefined") {
 			});
 
 			// Clean up on page hide (for back/forward cache)
-			window.addEventListener('pagehide', () => {
+			window.addEventListener("pagehide", () => {
 				if (this.keepaliveInterval) {
 					clearInterval(this.keepaliveInterval);
 					this.keepaliveInterval = null;
-					console.log("🧹 Cleaned up content script keepalive interval on page hide");
+					console.log(
+						"🧹 Cleaned up content script keepalive interval on page hide",
+					);
 				}
 			});
 		}
 
 		async sendServiceWorkerPing() {
 			// Simplified ping - removed storage-based keepalive mechanism
-			console.log("📱 Content script keepalive ping (storage mechanism removed)");
+			console.log(
+				"📱 Content script keepalive ping (storage mechanism removed)",
+			);
 		}
 	}
 

@@ -1,0 +1,89 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Malformed HTML Test</title>
+</head>
+<body>
+    <!-- Unclosed tags -->
+    <div id="unclosed-div">
+        <span id="unclosed-span">
+            <button id="button-in-unclosed">Button
+        
+    <!-- Nested interactive elements -->
+    <button id="outer-button">
+        <button id="nested-button">Nested Button</button>
+        <a href="#" id="nested-link">Nested Link</a>
+    </button>
+    
+    <!-- Invalid attributes -->
+    <div onclick="invalid function()" id="invalid-onclick">Invalid OnClick</div>
+    <input type="invalid-type" id="invalid-input-type">
+    <div role="invalid-role" id="invalid-role">Invalid Role</div>
+    
+    <!-- Extreme nesting -->
+    <div><div><div><div><div><div><div><div><div><div>
+    <button id="deeply-nested-button">Deep Button</button>
+    </div></div></div></div></div></div></div></div></div></div>
+    
+    <!-- Elements with special characters -->
+    <button id="special-chars-!@#$%^&*()" onclick="alert('special')">Special Chars</button>
+    <div id="unicode-元素" role="button">Unicode Element</div>
+    
+    <!-- Circular references in attributes -->
+    <div id="circular1" aria-labelledby="circular2">
+        <div id="circular2" aria-labelledby="circular1">Circular Reference</div>
+    </div>
+    
+    <!-- Empty and whitespace-only elements -->
+    <button id="empty-button"></button>
+    <div id="whitespace-div">   </div>
+    <span id="tabs-and-newlines">	
+    	</span>
+    
+    <!-- Elements with extreme styling -->
+    <div id="extreme-transform" style="transform: rotate(360deg) scale(1000) translate(99999px, 99999px);">Extreme Transform</div>
+    <div id="extreme-zindex" style="z-index: 999999999;">Extreme Z-Index</div>
+    
+    <!-- SVG and namespaced elements -->
+    <svg id="svg-element">
+        <circle id="svg-circle" cx="50" cy="50" r="40" onclick="svgClick()"/>
+        <g id="svg-group">
+            <rect id="svg-rect" x="10" y="10" width="30" height="30"/>
+        </g>
+    </svg>
+    
+    <!-- Shadow DOM simulation -->
+    <div id="shadow-host">
+        <template id="shadow-template">
+            <button id="shadow-button">Shadow Button</button>
+        </template>
+    </div>
+    
+    <!-- Custom elements -->
+    <custom-element id="custom-1" role="button">Custom Element</custom-element>
+    <unknown-tag id="unknown-tag" onclick="unknown()">Unknown Tag</unknown-tag>
+    
+    <script>
+        function svgClick() { console.log('SVG clicked'); }
+        function unknown() { console.log('Unknown clicked'); }
+        
+        // Simulate some dynamic DOM manipulation
+        setTimeout(() => {
+            const div = document.createElement('div');
+            div.id = 'dynamic-element';
+            div.onclick = () => console.log('Dynamic click');
+            document.body.appendChild(div);
+        }, 100);
+        
+        // Test shadow DOM if supported
+        try {
+            const host = document.getElementById('shadow-host');
+            const shadow = host.attachShadow({mode: 'open'});
+            shadow.innerHTML = '<button id="real-shadow-button">Real Shadow Button</button>';
+        } catch (e) {
+            console.log('Shadow DOM not supported');
+        }
+    </script>
+</body>
+</html>

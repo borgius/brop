@@ -1,0 +1,1042 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Large DOM Stress Test</title>
+    <style>
+        .stress-element { 
+            width: 50px; 
+            height: 20px; 
+            margin: 1px; 
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        .hidden { display: none; }
+        .complex-element {
+            border: 1px solid #ccc;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transform: rotate(1deg);
+        }
+    </style>
+</head>
+<body>
+    <h1>Large DOM Stress Test (1000 elements)</h1>
+<button id="btn-0" class="stress-element" onclick="test(0)">Button 0</button>
+<section id="section-0"><h2>Section 0</h2><input id="input-1" type="text" placeholder="Input 1" class="stress-element">
+<div id="div-2" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 2">Div 2</div>
+<a id="link-3" href="#3" class="stress-element">Link 3</a>
+<span id="span-4" class="stress-element " onclick="span(4)">Span 4</span>
+<select id="select-5" class="stress-element"><option>Option 5</option></select>
+<textarea id="textarea-6" placeholder="Textarea 6" class="stress-element"></textarea>
+<div id="aria-7" role="checkbox" aria-checked="false" class="stress-element">Checkbox 7</div>
+<i id="icon-8" class="fa-icon stress-element" aria-hidden="true">Icon 8</i>
+<canvas id="canvas-9" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-10" class="stress-element" onclick="test(10)">Button 10</button>
+<input id="input-11" type="text" placeholder="Input 11" class="stress-element">
+<div id="div-12" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 12">Div 12</div>
+<a id="link-13" href="#13" class="stress-element">Link 13</a>
+<span id="span-14" class="stress-element " onclick="span(14)">Span 14</span>
+<select id="select-15" class="stress-element"><option>Option 15</option></select>
+<textarea id="textarea-16" placeholder="Textarea 16" class="stress-element"></textarea>
+<div id="aria-17" role="checkbox" aria-checked="false" class="stress-element">Checkbox 17</div>
+<i id="icon-18" class="fa-icon stress-element" aria-hidden="true">Icon 18</i>
+<canvas id="canvas-19" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-20" class="stress-element" onclick="test(20)">Button 20</button>
+<input id="input-21" type="text" placeholder="Input 21" class="stress-element">
+<div id="div-22" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 22">Div 22</div>
+<a id="link-23" href="#23" class="stress-element">Link 23</a>
+<span id="span-24" class="stress-element " onclick="span(24)">Span 24</span>
+<select id="select-25" class="stress-element"><option>Option 25</option></select>
+<textarea id="textarea-26" placeholder="Textarea 26" class="stress-element"></textarea>
+<div id="aria-27" role="checkbox" aria-checked="false" class="stress-element">Checkbox 27</div>
+<i id="icon-28" class="fa-icon stress-element" aria-hidden="true">Icon 28</i>
+<canvas id="canvas-29" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-30" class="stress-element" onclick="test(30)">Button 30</button>
+<input id="input-31" type="text" placeholder="Input 31" class="stress-element">
+<div id="div-32" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 32">Div 32</div>
+<a id="link-33" href="#33" class="stress-element">Link 33</a>
+<span id="span-34" class="stress-element " onclick="span(34)">Span 34</span>
+<select id="select-35" class="stress-element"><option>Option 35</option></select>
+<textarea id="textarea-36" placeholder="Textarea 36" class="stress-element"></textarea>
+<div id="aria-37" role="checkbox" aria-checked="false" class="stress-element">Checkbox 37</div>
+<i id="icon-38" class="fa-icon stress-element" aria-hidden="true">Icon 38</i>
+<canvas id="canvas-39" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-40" class="stress-element" onclick="test(40)">Button 40</button>
+<input id="input-41" type="text" placeholder="Input 41" class="stress-element">
+<div id="div-42" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 42">Div 42</div>
+<a id="link-43" href="#43" class="stress-element">Link 43</a>
+<span id="span-44" class="stress-element " onclick="span(44)">Span 44</span>
+<select id="select-45" class="stress-element"><option>Option 45</option></select>
+<textarea id="textarea-46" placeholder="Textarea 46" class="stress-element"></textarea>
+<div id="aria-47" role="checkbox" aria-checked="false" class="stress-element">Checkbox 47</div>
+<i id="icon-48" class="fa-icon stress-element" aria-hidden="true">Icon 48</i>
+<canvas id="canvas-49" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-50" class="stress-element" onclick="test(50)">Button 50</button>
+<input id="input-51" type="text" placeholder="Input 51" class="stress-element">
+<div id="div-52" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 52">Div 52</div>
+<a id="link-53" href="#53" class="stress-element">Link 53</a>
+<span id="span-54" class="stress-element " onclick="span(54)">Span 54</span>
+<select id="select-55" class="stress-element"><option>Option 55</option></select>
+<textarea id="textarea-56" placeholder="Textarea 56" class="stress-element"></textarea>
+<div id="aria-57" role="checkbox" aria-checked="false" class="stress-element">Checkbox 57</div>
+<i id="icon-58" class="fa-icon stress-element" aria-hidden="true">Icon 58</i>
+<canvas id="canvas-59" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-60" class="stress-element" onclick="test(60)">Button 60</button>
+<input id="input-61" type="text" placeholder="Input 61" class="stress-element">
+<div id="div-62" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 62">Div 62</div>
+<a id="link-63" href="#63" class="stress-element">Link 63</a>
+<span id="span-64" class="stress-element " onclick="span(64)">Span 64</span>
+<select id="select-65" class="stress-element"><option>Option 65</option></select>
+<textarea id="textarea-66" placeholder="Textarea 66" class="stress-element"></textarea>
+<div id="aria-67" role="checkbox" aria-checked="false" class="stress-element">Checkbox 67</div>
+<i id="icon-68" class="fa-icon stress-element" aria-hidden="true">Icon 68</i>
+<canvas id="canvas-69" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-70" class="stress-element" onclick="test(70)">Button 70</button>
+<input id="input-71" type="text" placeholder="Input 71" class="stress-element">
+<div id="div-72" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 72">Div 72</div>
+<a id="link-73" href="#73" class="stress-element">Link 73</a>
+<span id="span-74" class="stress-element " onclick="span(74)">Span 74</span>
+<select id="select-75" class="stress-element"><option>Option 75</option></select>
+<textarea id="textarea-76" placeholder="Textarea 76" class="stress-element"></textarea>
+<div id="aria-77" role="checkbox" aria-checked="false" class="stress-element">Checkbox 77</div>
+<i id="icon-78" class="fa-icon stress-element" aria-hidden="true">Icon 78</i>
+<canvas id="canvas-79" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-80" class="stress-element" onclick="test(80)">Button 80</button>
+<input id="input-81" type="text" placeholder="Input 81" class="stress-element">
+<div id="div-82" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 82">Div 82</div>
+<a id="link-83" href="#83" class="stress-element">Link 83</a>
+<span id="span-84" class="stress-element " onclick="span(84)">Span 84</span>
+<select id="select-85" class="stress-element"><option>Option 85</option></select>
+<textarea id="textarea-86" placeholder="Textarea 86" class="stress-element"></textarea>
+<div id="aria-87" role="checkbox" aria-checked="false" class="stress-element">Checkbox 87</div>
+<i id="icon-88" class="fa-icon stress-element" aria-hidden="true">Icon 88</i>
+<canvas id="canvas-89" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-90" class="stress-element" onclick="test(90)">Button 90</button>
+<input id="input-91" type="text" placeholder="Input 91" class="stress-element">
+<div id="div-92" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 92">Div 92</div>
+<a id="link-93" href="#93" class="stress-element">Link 93</a>
+<span id="span-94" class="stress-element " onclick="span(94)">Span 94</span>
+<select id="select-95" class="stress-element"><option>Option 95</option></select>
+<textarea id="textarea-96" placeholder="Textarea 96" class="stress-element"></textarea>
+<div id="aria-97" role="checkbox" aria-checked="false" class="stress-element">Checkbox 97</div>
+<i id="icon-98" class="fa-icon stress-element" aria-hidden="true">Icon 98</i>
+<canvas id="canvas-99" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-100" class="stress-element" onclick="test(100)">Button 100</button>
+<section id="section-100"><h2>Section 100</h2><input id="input-101" type="text" placeholder="Input 101" class="stress-element">
+<div id="div-102" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 102">Div 102</div>
+<a id="link-103" href="#103" class="stress-element">Link 103</a>
+<span id="span-104" class="stress-element " onclick="span(104)">Span 104</span>
+<select id="select-105" class="stress-element"><option>Option 105</option></select>
+<textarea id="textarea-106" placeholder="Textarea 106" class="stress-element"></textarea>
+<div id="aria-107" role="checkbox" aria-checked="false" class="stress-element">Checkbox 107</div>
+<i id="icon-108" class="fa-icon stress-element" aria-hidden="true">Icon 108</i>
+<canvas id="canvas-109" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-110" class="stress-element" onclick="test(110)">Button 110</button>
+<input id="input-111" type="text" placeholder="Input 111" class="stress-element">
+<div id="div-112" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 112">Div 112</div>
+<a id="link-113" href="#113" class="stress-element">Link 113</a>
+<span id="span-114" class="stress-element " onclick="span(114)">Span 114</span>
+<select id="select-115" class="stress-element"><option>Option 115</option></select>
+<textarea id="textarea-116" placeholder="Textarea 116" class="stress-element"></textarea>
+<div id="aria-117" role="checkbox" aria-checked="false" class="stress-element">Checkbox 117</div>
+<i id="icon-118" class="fa-icon stress-element" aria-hidden="true">Icon 118</i>
+<canvas id="canvas-119" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-120" class="stress-element" onclick="test(120)">Button 120</button>
+<input id="input-121" type="text" placeholder="Input 121" class="stress-element">
+<div id="div-122" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 122">Div 122</div>
+<a id="link-123" href="#123" class="stress-element">Link 123</a>
+<span id="span-124" class="stress-element " onclick="span(124)">Span 124</span>
+<select id="select-125" class="stress-element"><option>Option 125</option></select>
+<textarea id="textarea-126" placeholder="Textarea 126" class="stress-element"></textarea>
+<div id="aria-127" role="checkbox" aria-checked="false" class="stress-element">Checkbox 127</div>
+<i id="icon-128" class="fa-icon stress-element" aria-hidden="true">Icon 128</i>
+<canvas id="canvas-129" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-130" class="stress-element" onclick="test(130)">Button 130</button>
+<input id="input-131" type="text" placeholder="Input 131" class="stress-element">
+<div id="div-132" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 132">Div 132</div>
+<a id="link-133" href="#133" class="stress-element">Link 133</a>
+<span id="span-134" class="stress-element " onclick="span(134)">Span 134</span>
+<select id="select-135" class="stress-element"><option>Option 135</option></select>
+<textarea id="textarea-136" placeholder="Textarea 136" class="stress-element"></textarea>
+<div id="aria-137" role="checkbox" aria-checked="false" class="stress-element">Checkbox 137</div>
+<i id="icon-138" class="fa-icon stress-element" aria-hidden="true">Icon 138</i>
+<canvas id="canvas-139" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-140" class="stress-element" onclick="test(140)">Button 140</button>
+<input id="input-141" type="text" placeholder="Input 141" class="stress-element">
+<div id="div-142" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 142">Div 142</div>
+<a id="link-143" href="#143" class="stress-element">Link 143</a>
+<span id="span-144" class="stress-element " onclick="span(144)">Span 144</span>
+<select id="select-145" class="stress-element"><option>Option 145</option></select>
+<textarea id="textarea-146" placeholder="Textarea 146" class="stress-element"></textarea>
+<div id="aria-147" role="checkbox" aria-checked="false" class="stress-element">Checkbox 147</div>
+<i id="icon-148" class="fa-icon stress-element" aria-hidden="true">Icon 148</i>
+<canvas id="canvas-149" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-150" class="stress-element" onclick="test(150)">Button 150</button>
+<input id="input-151" type="text" placeholder="Input 151" class="stress-element">
+<div id="div-152" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 152">Div 152</div>
+<a id="link-153" href="#153" class="stress-element">Link 153</a>
+<span id="span-154" class="stress-element " onclick="span(154)">Span 154</span>
+<select id="select-155" class="stress-element"><option>Option 155</option></select>
+<textarea id="textarea-156" placeholder="Textarea 156" class="stress-element"></textarea>
+<div id="aria-157" role="checkbox" aria-checked="false" class="stress-element">Checkbox 157</div>
+<i id="icon-158" class="fa-icon stress-element" aria-hidden="true">Icon 158</i>
+<canvas id="canvas-159" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-160" class="stress-element" onclick="test(160)">Button 160</button>
+<input id="input-161" type="text" placeholder="Input 161" class="stress-element">
+<div id="div-162" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 162">Div 162</div>
+<a id="link-163" href="#163" class="stress-element">Link 163</a>
+<span id="span-164" class="stress-element " onclick="span(164)">Span 164</span>
+<select id="select-165" class="stress-element"><option>Option 165</option></select>
+<textarea id="textarea-166" placeholder="Textarea 166" class="stress-element"></textarea>
+<div id="aria-167" role="checkbox" aria-checked="false" class="stress-element">Checkbox 167</div>
+<i id="icon-168" class="fa-icon stress-element" aria-hidden="true">Icon 168</i>
+<canvas id="canvas-169" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-170" class="stress-element" onclick="test(170)">Button 170</button>
+<input id="input-171" type="text" placeholder="Input 171" class="stress-element">
+<div id="div-172" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 172">Div 172</div>
+<a id="link-173" href="#173" class="stress-element">Link 173</a>
+<span id="span-174" class="stress-element " onclick="span(174)">Span 174</span>
+<select id="select-175" class="stress-element"><option>Option 175</option></select>
+<textarea id="textarea-176" placeholder="Textarea 176" class="stress-element"></textarea>
+<div id="aria-177" role="checkbox" aria-checked="false" class="stress-element">Checkbox 177</div>
+<i id="icon-178" class="fa-icon stress-element" aria-hidden="true">Icon 178</i>
+<canvas id="canvas-179" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-180" class="stress-element" onclick="test(180)">Button 180</button>
+<input id="input-181" type="text" placeholder="Input 181" class="stress-element">
+<div id="div-182" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 182">Div 182</div>
+<a id="link-183" href="#183" class="stress-element">Link 183</a>
+<span id="span-184" class="stress-element " onclick="span(184)">Span 184</span>
+<select id="select-185" class="stress-element"><option>Option 185</option></select>
+<textarea id="textarea-186" placeholder="Textarea 186" class="stress-element"></textarea>
+<div id="aria-187" role="checkbox" aria-checked="false" class="stress-element">Checkbox 187</div>
+<i id="icon-188" class="fa-icon stress-element" aria-hidden="true">Icon 188</i>
+<canvas id="canvas-189" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-190" class="stress-element" onclick="test(190)">Button 190</button>
+<input id="input-191" type="text" placeholder="Input 191" class="stress-element">
+<div id="div-192" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 192">Div 192</div>
+<a id="link-193" href="#193" class="stress-element">Link 193</a>
+<span id="span-194" class="stress-element " onclick="span(194)">Span 194</span>
+<select id="select-195" class="stress-element"><option>Option 195</option></select>
+<textarea id="textarea-196" placeholder="Textarea 196" class="stress-element"></textarea>
+<div id="aria-197" role="checkbox" aria-checked="false" class="stress-element">Checkbox 197</div>
+<i id="icon-198" class="fa-icon stress-element" aria-hidden="true">Icon 198</i>
+<canvas id="canvas-199" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-200" class="stress-element" onclick="test(200)">Button 200</button>
+<section id="section-200"><h2>Section 200</h2><input id="input-201" type="text" placeholder="Input 201" class="stress-element">
+<div id="div-202" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 202">Div 202</div>
+<a id="link-203" href="#203" class="stress-element">Link 203</a>
+<span id="span-204" class="stress-element " onclick="span(204)">Span 204</span>
+<select id="select-205" class="stress-element"><option>Option 205</option></select>
+<textarea id="textarea-206" placeholder="Textarea 206" class="stress-element"></textarea>
+<div id="aria-207" role="checkbox" aria-checked="false" class="stress-element">Checkbox 207</div>
+<i id="icon-208" class="fa-icon stress-element" aria-hidden="true">Icon 208</i>
+<canvas id="canvas-209" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-210" class="stress-element" onclick="test(210)">Button 210</button>
+<input id="input-211" type="text" placeholder="Input 211" class="stress-element">
+<div id="div-212" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 212">Div 212</div>
+<a id="link-213" href="#213" class="stress-element">Link 213</a>
+<span id="span-214" class="stress-element " onclick="span(214)">Span 214</span>
+<select id="select-215" class="stress-element"><option>Option 215</option></select>
+<textarea id="textarea-216" placeholder="Textarea 216" class="stress-element"></textarea>
+<div id="aria-217" role="checkbox" aria-checked="false" class="stress-element">Checkbox 217</div>
+<i id="icon-218" class="fa-icon stress-element" aria-hidden="true">Icon 218</i>
+<canvas id="canvas-219" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-220" class="stress-element" onclick="test(220)">Button 220</button>
+<input id="input-221" type="text" placeholder="Input 221" class="stress-element">
+<div id="div-222" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 222">Div 222</div>
+<a id="link-223" href="#223" class="stress-element">Link 223</a>
+<span id="span-224" class="stress-element " onclick="span(224)">Span 224</span>
+<select id="select-225" class="stress-element"><option>Option 225</option></select>
+<textarea id="textarea-226" placeholder="Textarea 226" class="stress-element"></textarea>
+<div id="aria-227" role="checkbox" aria-checked="false" class="stress-element">Checkbox 227</div>
+<i id="icon-228" class="fa-icon stress-element" aria-hidden="true">Icon 228</i>
+<canvas id="canvas-229" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-230" class="stress-element" onclick="test(230)">Button 230</button>
+<input id="input-231" type="text" placeholder="Input 231" class="stress-element">
+<div id="div-232" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 232">Div 232</div>
+<a id="link-233" href="#233" class="stress-element">Link 233</a>
+<span id="span-234" class="stress-element " onclick="span(234)">Span 234</span>
+<select id="select-235" class="stress-element"><option>Option 235</option></select>
+<textarea id="textarea-236" placeholder="Textarea 236" class="stress-element"></textarea>
+<div id="aria-237" role="checkbox" aria-checked="false" class="stress-element">Checkbox 237</div>
+<i id="icon-238" class="fa-icon stress-element" aria-hidden="true">Icon 238</i>
+<canvas id="canvas-239" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-240" class="stress-element" onclick="test(240)">Button 240</button>
+<input id="input-241" type="text" placeholder="Input 241" class="stress-element">
+<div id="div-242" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 242">Div 242</div>
+<a id="link-243" href="#243" class="stress-element">Link 243</a>
+<span id="span-244" class="stress-element " onclick="span(244)">Span 244</span>
+<select id="select-245" class="stress-element"><option>Option 245</option></select>
+<textarea id="textarea-246" placeholder="Textarea 246" class="stress-element"></textarea>
+<div id="aria-247" role="checkbox" aria-checked="false" class="stress-element">Checkbox 247</div>
+<i id="icon-248" class="fa-icon stress-element" aria-hidden="true">Icon 248</i>
+<canvas id="canvas-249" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-250" class="stress-element" onclick="test(250)">Button 250</button>
+<input id="input-251" type="text" placeholder="Input 251" class="stress-element">
+<div id="div-252" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 252">Div 252</div>
+<a id="link-253" href="#253" class="stress-element">Link 253</a>
+<span id="span-254" class="stress-element " onclick="span(254)">Span 254</span>
+<select id="select-255" class="stress-element"><option>Option 255</option></select>
+<textarea id="textarea-256" placeholder="Textarea 256" class="stress-element"></textarea>
+<div id="aria-257" role="checkbox" aria-checked="false" class="stress-element">Checkbox 257</div>
+<i id="icon-258" class="fa-icon stress-element" aria-hidden="true">Icon 258</i>
+<canvas id="canvas-259" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-260" class="stress-element" onclick="test(260)">Button 260</button>
+<input id="input-261" type="text" placeholder="Input 261" class="stress-element">
+<div id="div-262" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 262">Div 262</div>
+<a id="link-263" href="#263" class="stress-element">Link 263</a>
+<span id="span-264" class="stress-element " onclick="span(264)">Span 264</span>
+<select id="select-265" class="stress-element"><option>Option 265</option></select>
+<textarea id="textarea-266" placeholder="Textarea 266" class="stress-element"></textarea>
+<div id="aria-267" role="checkbox" aria-checked="false" class="stress-element">Checkbox 267</div>
+<i id="icon-268" class="fa-icon stress-element" aria-hidden="true">Icon 268</i>
+<canvas id="canvas-269" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-270" class="stress-element" onclick="test(270)">Button 270</button>
+<input id="input-271" type="text" placeholder="Input 271" class="stress-element">
+<div id="div-272" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 272">Div 272</div>
+<a id="link-273" href="#273" class="stress-element">Link 273</a>
+<span id="span-274" class="stress-element " onclick="span(274)">Span 274</span>
+<select id="select-275" class="stress-element"><option>Option 275</option></select>
+<textarea id="textarea-276" placeholder="Textarea 276" class="stress-element"></textarea>
+<div id="aria-277" role="checkbox" aria-checked="false" class="stress-element">Checkbox 277</div>
+<i id="icon-278" class="fa-icon stress-element" aria-hidden="true">Icon 278</i>
+<canvas id="canvas-279" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-280" class="stress-element" onclick="test(280)">Button 280</button>
+<input id="input-281" type="text" placeholder="Input 281" class="stress-element">
+<div id="div-282" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 282">Div 282</div>
+<a id="link-283" href="#283" class="stress-element">Link 283</a>
+<span id="span-284" class="stress-element " onclick="span(284)">Span 284</span>
+<select id="select-285" class="stress-element"><option>Option 285</option></select>
+<textarea id="textarea-286" placeholder="Textarea 286" class="stress-element"></textarea>
+<div id="aria-287" role="checkbox" aria-checked="false" class="stress-element">Checkbox 287</div>
+<i id="icon-288" class="fa-icon stress-element" aria-hidden="true">Icon 288</i>
+<canvas id="canvas-289" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-290" class="stress-element" onclick="test(290)">Button 290</button>
+<input id="input-291" type="text" placeholder="Input 291" class="stress-element">
+<div id="div-292" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 292">Div 292</div>
+<a id="link-293" href="#293" class="stress-element">Link 293</a>
+<span id="span-294" class="stress-element " onclick="span(294)">Span 294</span>
+<select id="select-295" class="stress-element"><option>Option 295</option></select>
+<textarea id="textarea-296" placeholder="Textarea 296" class="stress-element"></textarea>
+<div id="aria-297" role="checkbox" aria-checked="false" class="stress-element">Checkbox 297</div>
+<i id="icon-298" class="fa-icon stress-element" aria-hidden="true">Icon 298</i>
+<canvas id="canvas-299" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-300" class="stress-element" onclick="test(300)">Button 300</button>
+<section id="section-300"><h2>Section 300</h2><input id="input-301" type="text" placeholder="Input 301" class="stress-element">
+<div id="div-302" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 302">Div 302</div>
+<a id="link-303" href="#303" class="stress-element">Link 303</a>
+<span id="span-304" class="stress-element " onclick="span(304)">Span 304</span>
+<select id="select-305" class="stress-element"><option>Option 305</option></select>
+<textarea id="textarea-306" placeholder="Textarea 306" class="stress-element"></textarea>
+<div id="aria-307" role="checkbox" aria-checked="false" class="stress-element">Checkbox 307</div>
+<i id="icon-308" class="fa-icon stress-element" aria-hidden="true">Icon 308</i>
+<canvas id="canvas-309" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-310" class="stress-element" onclick="test(310)">Button 310</button>
+<input id="input-311" type="text" placeholder="Input 311" class="stress-element">
+<div id="div-312" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 312">Div 312</div>
+<a id="link-313" href="#313" class="stress-element">Link 313</a>
+<span id="span-314" class="stress-element " onclick="span(314)">Span 314</span>
+<select id="select-315" class="stress-element"><option>Option 315</option></select>
+<textarea id="textarea-316" placeholder="Textarea 316" class="stress-element"></textarea>
+<div id="aria-317" role="checkbox" aria-checked="false" class="stress-element">Checkbox 317</div>
+<i id="icon-318" class="fa-icon stress-element" aria-hidden="true">Icon 318</i>
+<canvas id="canvas-319" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-320" class="stress-element" onclick="test(320)">Button 320</button>
+<input id="input-321" type="text" placeholder="Input 321" class="stress-element">
+<div id="div-322" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 322">Div 322</div>
+<a id="link-323" href="#323" class="stress-element">Link 323</a>
+<span id="span-324" class="stress-element " onclick="span(324)">Span 324</span>
+<select id="select-325" class="stress-element"><option>Option 325</option></select>
+<textarea id="textarea-326" placeholder="Textarea 326" class="stress-element"></textarea>
+<div id="aria-327" role="checkbox" aria-checked="false" class="stress-element">Checkbox 327</div>
+<i id="icon-328" class="fa-icon stress-element" aria-hidden="true">Icon 328</i>
+<canvas id="canvas-329" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-330" class="stress-element" onclick="test(330)">Button 330</button>
+<input id="input-331" type="text" placeholder="Input 331" class="stress-element">
+<div id="div-332" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 332">Div 332</div>
+<a id="link-333" href="#333" class="stress-element">Link 333</a>
+<span id="span-334" class="stress-element " onclick="span(334)">Span 334</span>
+<select id="select-335" class="stress-element"><option>Option 335</option></select>
+<textarea id="textarea-336" placeholder="Textarea 336" class="stress-element"></textarea>
+<div id="aria-337" role="checkbox" aria-checked="false" class="stress-element">Checkbox 337</div>
+<i id="icon-338" class="fa-icon stress-element" aria-hidden="true">Icon 338</i>
+<canvas id="canvas-339" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-340" class="stress-element" onclick="test(340)">Button 340</button>
+<input id="input-341" type="text" placeholder="Input 341" class="stress-element">
+<div id="div-342" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 342">Div 342</div>
+<a id="link-343" href="#343" class="stress-element">Link 343</a>
+<span id="span-344" class="stress-element " onclick="span(344)">Span 344</span>
+<select id="select-345" class="stress-element"><option>Option 345</option></select>
+<textarea id="textarea-346" placeholder="Textarea 346" class="stress-element"></textarea>
+<div id="aria-347" role="checkbox" aria-checked="false" class="stress-element">Checkbox 347</div>
+<i id="icon-348" class="fa-icon stress-element" aria-hidden="true">Icon 348</i>
+<canvas id="canvas-349" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-350" class="stress-element" onclick="test(350)">Button 350</button>
+<input id="input-351" type="text" placeholder="Input 351" class="stress-element">
+<div id="div-352" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 352">Div 352</div>
+<a id="link-353" href="#353" class="stress-element">Link 353</a>
+<span id="span-354" class="stress-element " onclick="span(354)">Span 354</span>
+<select id="select-355" class="stress-element"><option>Option 355</option></select>
+<textarea id="textarea-356" placeholder="Textarea 356" class="stress-element"></textarea>
+<div id="aria-357" role="checkbox" aria-checked="false" class="stress-element">Checkbox 357</div>
+<i id="icon-358" class="fa-icon stress-element" aria-hidden="true">Icon 358</i>
+<canvas id="canvas-359" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-360" class="stress-element" onclick="test(360)">Button 360</button>
+<input id="input-361" type="text" placeholder="Input 361" class="stress-element">
+<div id="div-362" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 362">Div 362</div>
+<a id="link-363" href="#363" class="stress-element">Link 363</a>
+<span id="span-364" class="stress-element " onclick="span(364)">Span 364</span>
+<select id="select-365" class="stress-element"><option>Option 365</option></select>
+<textarea id="textarea-366" placeholder="Textarea 366" class="stress-element"></textarea>
+<div id="aria-367" role="checkbox" aria-checked="false" class="stress-element">Checkbox 367</div>
+<i id="icon-368" class="fa-icon stress-element" aria-hidden="true">Icon 368</i>
+<canvas id="canvas-369" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-370" class="stress-element" onclick="test(370)">Button 370</button>
+<input id="input-371" type="text" placeholder="Input 371" class="stress-element">
+<div id="div-372" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 372">Div 372</div>
+<a id="link-373" href="#373" class="stress-element">Link 373</a>
+<span id="span-374" class="stress-element " onclick="span(374)">Span 374</span>
+<select id="select-375" class="stress-element"><option>Option 375</option></select>
+<textarea id="textarea-376" placeholder="Textarea 376" class="stress-element"></textarea>
+<div id="aria-377" role="checkbox" aria-checked="false" class="stress-element">Checkbox 377</div>
+<i id="icon-378" class="fa-icon stress-element" aria-hidden="true">Icon 378</i>
+<canvas id="canvas-379" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-380" class="stress-element" onclick="test(380)">Button 380</button>
+<input id="input-381" type="text" placeholder="Input 381" class="stress-element">
+<div id="div-382" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 382">Div 382</div>
+<a id="link-383" href="#383" class="stress-element">Link 383</a>
+<span id="span-384" class="stress-element " onclick="span(384)">Span 384</span>
+<select id="select-385" class="stress-element"><option>Option 385</option></select>
+<textarea id="textarea-386" placeholder="Textarea 386" class="stress-element"></textarea>
+<div id="aria-387" role="checkbox" aria-checked="false" class="stress-element">Checkbox 387</div>
+<i id="icon-388" class="fa-icon stress-element" aria-hidden="true">Icon 388</i>
+<canvas id="canvas-389" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-390" class="stress-element" onclick="test(390)">Button 390</button>
+<input id="input-391" type="text" placeholder="Input 391" class="stress-element">
+<div id="div-392" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 392">Div 392</div>
+<a id="link-393" href="#393" class="stress-element">Link 393</a>
+<span id="span-394" class="stress-element " onclick="span(394)">Span 394</span>
+<select id="select-395" class="stress-element"><option>Option 395</option></select>
+<textarea id="textarea-396" placeholder="Textarea 396" class="stress-element"></textarea>
+<div id="aria-397" role="checkbox" aria-checked="false" class="stress-element">Checkbox 397</div>
+<i id="icon-398" class="fa-icon stress-element" aria-hidden="true">Icon 398</i>
+<canvas id="canvas-399" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-400" class="stress-element" onclick="test(400)">Button 400</button>
+<section id="section-400"><h2>Section 400</h2><input id="input-401" type="text" placeholder="Input 401" class="stress-element">
+<div id="div-402" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 402">Div 402</div>
+<a id="link-403" href="#403" class="stress-element">Link 403</a>
+<span id="span-404" class="stress-element " onclick="span(404)">Span 404</span>
+<select id="select-405" class="stress-element"><option>Option 405</option></select>
+<textarea id="textarea-406" placeholder="Textarea 406" class="stress-element"></textarea>
+<div id="aria-407" role="checkbox" aria-checked="false" class="stress-element">Checkbox 407</div>
+<i id="icon-408" class="fa-icon stress-element" aria-hidden="true">Icon 408</i>
+<canvas id="canvas-409" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-410" class="stress-element" onclick="test(410)">Button 410</button>
+<input id="input-411" type="text" placeholder="Input 411" class="stress-element">
+<div id="div-412" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 412">Div 412</div>
+<a id="link-413" href="#413" class="stress-element">Link 413</a>
+<span id="span-414" class="stress-element " onclick="span(414)">Span 414</span>
+<select id="select-415" class="stress-element"><option>Option 415</option></select>
+<textarea id="textarea-416" placeholder="Textarea 416" class="stress-element"></textarea>
+<div id="aria-417" role="checkbox" aria-checked="false" class="stress-element">Checkbox 417</div>
+<i id="icon-418" class="fa-icon stress-element" aria-hidden="true">Icon 418</i>
+<canvas id="canvas-419" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-420" class="stress-element" onclick="test(420)">Button 420</button>
+<input id="input-421" type="text" placeholder="Input 421" class="stress-element">
+<div id="div-422" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 422">Div 422</div>
+<a id="link-423" href="#423" class="stress-element">Link 423</a>
+<span id="span-424" class="stress-element " onclick="span(424)">Span 424</span>
+<select id="select-425" class="stress-element"><option>Option 425</option></select>
+<textarea id="textarea-426" placeholder="Textarea 426" class="stress-element"></textarea>
+<div id="aria-427" role="checkbox" aria-checked="false" class="stress-element">Checkbox 427</div>
+<i id="icon-428" class="fa-icon stress-element" aria-hidden="true">Icon 428</i>
+<canvas id="canvas-429" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-430" class="stress-element" onclick="test(430)">Button 430</button>
+<input id="input-431" type="text" placeholder="Input 431" class="stress-element">
+<div id="div-432" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 432">Div 432</div>
+<a id="link-433" href="#433" class="stress-element">Link 433</a>
+<span id="span-434" class="stress-element " onclick="span(434)">Span 434</span>
+<select id="select-435" class="stress-element"><option>Option 435</option></select>
+<textarea id="textarea-436" placeholder="Textarea 436" class="stress-element"></textarea>
+<div id="aria-437" role="checkbox" aria-checked="false" class="stress-element">Checkbox 437</div>
+<i id="icon-438" class="fa-icon stress-element" aria-hidden="true">Icon 438</i>
+<canvas id="canvas-439" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-440" class="stress-element" onclick="test(440)">Button 440</button>
+<input id="input-441" type="text" placeholder="Input 441" class="stress-element">
+<div id="div-442" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 442">Div 442</div>
+<a id="link-443" href="#443" class="stress-element">Link 443</a>
+<span id="span-444" class="stress-element " onclick="span(444)">Span 444</span>
+<select id="select-445" class="stress-element"><option>Option 445</option></select>
+<textarea id="textarea-446" placeholder="Textarea 446" class="stress-element"></textarea>
+<div id="aria-447" role="checkbox" aria-checked="false" class="stress-element">Checkbox 447</div>
+<i id="icon-448" class="fa-icon stress-element" aria-hidden="true">Icon 448</i>
+<canvas id="canvas-449" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-450" class="stress-element" onclick="test(450)">Button 450</button>
+<input id="input-451" type="text" placeholder="Input 451" class="stress-element">
+<div id="div-452" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 452">Div 452</div>
+<a id="link-453" href="#453" class="stress-element">Link 453</a>
+<span id="span-454" class="stress-element " onclick="span(454)">Span 454</span>
+<select id="select-455" class="stress-element"><option>Option 455</option></select>
+<textarea id="textarea-456" placeholder="Textarea 456" class="stress-element"></textarea>
+<div id="aria-457" role="checkbox" aria-checked="false" class="stress-element">Checkbox 457</div>
+<i id="icon-458" class="fa-icon stress-element" aria-hidden="true">Icon 458</i>
+<canvas id="canvas-459" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-460" class="stress-element" onclick="test(460)">Button 460</button>
+<input id="input-461" type="text" placeholder="Input 461" class="stress-element">
+<div id="div-462" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 462">Div 462</div>
+<a id="link-463" href="#463" class="stress-element">Link 463</a>
+<span id="span-464" class="stress-element " onclick="span(464)">Span 464</span>
+<select id="select-465" class="stress-element"><option>Option 465</option></select>
+<textarea id="textarea-466" placeholder="Textarea 466" class="stress-element"></textarea>
+<div id="aria-467" role="checkbox" aria-checked="false" class="stress-element">Checkbox 467</div>
+<i id="icon-468" class="fa-icon stress-element" aria-hidden="true">Icon 468</i>
+<canvas id="canvas-469" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-470" class="stress-element" onclick="test(470)">Button 470</button>
+<input id="input-471" type="text" placeholder="Input 471" class="stress-element">
+<div id="div-472" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 472">Div 472</div>
+<a id="link-473" href="#473" class="stress-element">Link 473</a>
+<span id="span-474" class="stress-element " onclick="span(474)">Span 474</span>
+<select id="select-475" class="stress-element"><option>Option 475</option></select>
+<textarea id="textarea-476" placeholder="Textarea 476" class="stress-element"></textarea>
+<div id="aria-477" role="checkbox" aria-checked="false" class="stress-element">Checkbox 477</div>
+<i id="icon-478" class="fa-icon stress-element" aria-hidden="true">Icon 478</i>
+<canvas id="canvas-479" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-480" class="stress-element" onclick="test(480)">Button 480</button>
+<input id="input-481" type="text" placeholder="Input 481" class="stress-element">
+<div id="div-482" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 482">Div 482</div>
+<a id="link-483" href="#483" class="stress-element">Link 483</a>
+<span id="span-484" class="stress-element " onclick="span(484)">Span 484</span>
+<select id="select-485" class="stress-element"><option>Option 485</option></select>
+<textarea id="textarea-486" placeholder="Textarea 486" class="stress-element"></textarea>
+<div id="aria-487" role="checkbox" aria-checked="false" class="stress-element">Checkbox 487</div>
+<i id="icon-488" class="fa-icon stress-element" aria-hidden="true">Icon 488</i>
+<canvas id="canvas-489" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-490" class="stress-element" onclick="test(490)">Button 490</button>
+<input id="input-491" type="text" placeholder="Input 491" class="stress-element">
+<div id="div-492" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 492">Div 492</div>
+<a id="link-493" href="#493" class="stress-element">Link 493</a>
+<span id="span-494" class="stress-element " onclick="span(494)">Span 494</span>
+<select id="select-495" class="stress-element"><option>Option 495</option></select>
+<textarea id="textarea-496" placeholder="Textarea 496" class="stress-element"></textarea>
+<div id="aria-497" role="checkbox" aria-checked="false" class="stress-element">Checkbox 497</div>
+<i id="icon-498" class="fa-icon stress-element" aria-hidden="true">Icon 498</i>
+<canvas id="canvas-499" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-500" class="stress-element" onclick="test(500)">Button 500</button>
+<section id="section-500"><h2>Section 500</h2><input id="input-501" type="text" placeholder="Input 501" class="stress-element">
+<div id="div-502" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 502">Div 502</div>
+<a id="link-503" href="#503" class="stress-element">Link 503</a>
+<span id="span-504" class="stress-element " onclick="span(504)">Span 504</span>
+<select id="select-505" class="stress-element"><option>Option 505</option></select>
+<textarea id="textarea-506" placeholder="Textarea 506" class="stress-element"></textarea>
+<div id="aria-507" role="checkbox" aria-checked="false" class="stress-element">Checkbox 507</div>
+<i id="icon-508" class="fa-icon stress-element" aria-hidden="true">Icon 508</i>
+<canvas id="canvas-509" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-510" class="stress-element" onclick="test(510)">Button 510</button>
+<input id="input-511" type="text" placeholder="Input 511" class="stress-element">
+<div id="div-512" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 512">Div 512</div>
+<a id="link-513" href="#513" class="stress-element">Link 513</a>
+<span id="span-514" class="stress-element " onclick="span(514)">Span 514</span>
+<select id="select-515" class="stress-element"><option>Option 515</option></select>
+<textarea id="textarea-516" placeholder="Textarea 516" class="stress-element"></textarea>
+<div id="aria-517" role="checkbox" aria-checked="false" class="stress-element">Checkbox 517</div>
+<i id="icon-518" class="fa-icon stress-element" aria-hidden="true">Icon 518</i>
+<canvas id="canvas-519" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-520" class="stress-element" onclick="test(520)">Button 520</button>
+<input id="input-521" type="text" placeholder="Input 521" class="stress-element">
+<div id="div-522" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 522">Div 522</div>
+<a id="link-523" href="#523" class="stress-element">Link 523</a>
+<span id="span-524" class="stress-element " onclick="span(524)">Span 524</span>
+<select id="select-525" class="stress-element"><option>Option 525</option></select>
+<textarea id="textarea-526" placeholder="Textarea 526" class="stress-element"></textarea>
+<div id="aria-527" role="checkbox" aria-checked="false" class="stress-element">Checkbox 527</div>
+<i id="icon-528" class="fa-icon stress-element" aria-hidden="true">Icon 528</i>
+<canvas id="canvas-529" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-530" class="stress-element" onclick="test(530)">Button 530</button>
+<input id="input-531" type="text" placeholder="Input 531" class="stress-element">
+<div id="div-532" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 532">Div 532</div>
+<a id="link-533" href="#533" class="stress-element">Link 533</a>
+<span id="span-534" class="stress-element " onclick="span(534)">Span 534</span>
+<select id="select-535" class="stress-element"><option>Option 535</option></select>
+<textarea id="textarea-536" placeholder="Textarea 536" class="stress-element"></textarea>
+<div id="aria-537" role="checkbox" aria-checked="false" class="stress-element">Checkbox 537</div>
+<i id="icon-538" class="fa-icon stress-element" aria-hidden="true">Icon 538</i>
+<canvas id="canvas-539" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-540" class="stress-element" onclick="test(540)">Button 540</button>
+<input id="input-541" type="text" placeholder="Input 541" class="stress-element">
+<div id="div-542" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 542">Div 542</div>
+<a id="link-543" href="#543" class="stress-element">Link 543</a>
+<span id="span-544" class="stress-element " onclick="span(544)">Span 544</span>
+<select id="select-545" class="stress-element"><option>Option 545</option></select>
+<textarea id="textarea-546" placeholder="Textarea 546" class="stress-element"></textarea>
+<div id="aria-547" role="checkbox" aria-checked="false" class="stress-element">Checkbox 547</div>
+<i id="icon-548" class="fa-icon stress-element" aria-hidden="true">Icon 548</i>
+<canvas id="canvas-549" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-550" class="stress-element" onclick="test(550)">Button 550</button>
+<input id="input-551" type="text" placeholder="Input 551" class="stress-element">
+<div id="div-552" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 552">Div 552</div>
+<a id="link-553" href="#553" class="stress-element">Link 553</a>
+<span id="span-554" class="stress-element " onclick="span(554)">Span 554</span>
+<select id="select-555" class="stress-element"><option>Option 555</option></select>
+<textarea id="textarea-556" placeholder="Textarea 556" class="stress-element"></textarea>
+<div id="aria-557" role="checkbox" aria-checked="false" class="stress-element">Checkbox 557</div>
+<i id="icon-558" class="fa-icon stress-element" aria-hidden="true">Icon 558</i>
+<canvas id="canvas-559" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-560" class="stress-element" onclick="test(560)">Button 560</button>
+<input id="input-561" type="text" placeholder="Input 561" class="stress-element">
+<div id="div-562" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 562">Div 562</div>
+<a id="link-563" href="#563" class="stress-element">Link 563</a>
+<span id="span-564" class="stress-element " onclick="span(564)">Span 564</span>
+<select id="select-565" class="stress-element"><option>Option 565</option></select>
+<textarea id="textarea-566" placeholder="Textarea 566" class="stress-element"></textarea>
+<div id="aria-567" role="checkbox" aria-checked="false" class="stress-element">Checkbox 567</div>
+<i id="icon-568" class="fa-icon stress-element" aria-hidden="true">Icon 568</i>
+<canvas id="canvas-569" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-570" class="stress-element" onclick="test(570)">Button 570</button>
+<input id="input-571" type="text" placeholder="Input 571" class="stress-element">
+<div id="div-572" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 572">Div 572</div>
+<a id="link-573" href="#573" class="stress-element">Link 573</a>
+<span id="span-574" class="stress-element " onclick="span(574)">Span 574</span>
+<select id="select-575" class="stress-element"><option>Option 575</option></select>
+<textarea id="textarea-576" placeholder="Textarea 576" class="stress-element"></textarea>
+<div id="aria-577" role="checkbox" aria-checked="false" class="stress-element">Checkbox 577</div>
+<i id="icon-578" class="fa-icon stress-element" aria-hidden="true">Icon 578</i>
+<canvas id="canvas-579" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-580" class="stress-element" onclick="test(580)">Button 580</button>
+<input id="input-581" type="text" placeholder="Input 581" class="stress-element">
+<div id="div-582" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 582">Div 582</div>
+<a id="link-583" href="#583" class="stress-element">Link 583</a>
+<span id="span-584" class="stress-element " onclick="span(584)">Span 584</span>
+<select id="select-585" class="stress-element"><option>Option 585</option></select>
+<textarea id="textarea-586" placeholder="Textarea 586" class="stress-element"></textarea>
+<div id="aria-587" role="checkbox" aria-checked="false" class="stress-element">Checkbox 587</div>
+<i id="icon-588" class="fa-icon stress-element" aria-hidden="true">Icon 588</i>
+<canvas id="canvas-589" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-590" class="stress-element" onclick="test(590)">Button 590</button>
+<input id="input-591" type="text" placeholder="Input 591" class="stress-element">
+<div id="div-592" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 592">Div 592</div>
+<a id="link-593" href="#593" class="stress-element">Link 593</a>
+<span id="span-594" class="stress-element " onclick="span(594)">Span 594</span>
+<select id="select-595" class="stress-element"><option>Option 595</option></select>
+<textarea id="textarea-596" placeholder="Textarea 596" class="stress-element"></textarea>
+<div id="aria-597" role="checkbox" aria-checked="false" class="stress-element">Checkbox 597</div>
+<i id="icon-598" class="fa-icon stress-element" aria-hidden="true">Icon 598</i>
+<canvas id="canvas-599" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-600" class="stress-element" onclick="test(600)">Button 600</button>
+<section id="section-600"><h2>Section 600</h2><input id="input-601" type="text" placeholder="Input 601" class="stress-element">
+<div id="div-602" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 602">Div 602</div>
+<a id="link-603" href="#603" class="stress-element">Link 603</a>
+<span id="span-604" class="stress-element " onclick="span(604)">Span 604</span>
+<select id="select-605" class="stress-element"><option>Option 605</option></select>
+<textarea id="textarea-606" placeholder="Textarea 606" class="stress-element"></textarea>
+<div id="aria-607" role="checkbox" aria-checked="false" class="stress-element">Checkbox 607</div>
+<i id="icon-608" class="fa-icon stress-element" aria-hidden="true">Icon 608</i>
+<canvas id="canvas-609" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-610" class="stress-element" onclick="test(610)">Button 610</button>
+<input id="input-611" type="text" placeholder="Input 611" class="stress-element">
+<div id="div-612" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 612">Div 612</div>
+<a id="link-613" href="#613" class="stress-element">Link 613</a>
+<span id="span-614" class="stress-element " onclick="span(614)">Span 614</span>
+<select id="select-615" class="stress-element"><option>Option 615</option></select>
+<textarea id="textarea-616" placeholder="Textarea 616" class="stress-element"></textarea>
+<div id="aria-617" role="checkbox" aria-checked="false" class="stress-element">Checkbox 617</div>
+<i id="icon-618" class="fa-icon stress-element" aria-hidden="true">Icon 618</i>
+<canvas id="canvas-619" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-620" class="stress-element" onclick="test(620)">Button 620</button>
+<input id="input-621" type="text" placeholder="Input 621" class="stress-element">
+<div id="div-622" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 622">Div 622</div>
+<a id="link-623" href="#623" class="stress-element">Link 623</a>
+<span id="span-624" class="stress-element " onclick="span(624)">Span 624</span>
+<select id="select-625" class="stress-element"><option>Option 625</option></select>
+<textarea id="textarea-626" placeholder="Textarea 626" class="stress-element"></textarea>
+<div id="aria-627" role="checkbox" aria-checked="false" class="stress-element">Checkbox 627</div>
+<i id="icon-628" class="fa-icon stress-element" aria-hidden="true">Icon 628</i>
+<canvas id="canvas-629" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-630" class="stress-element" onclick="test(630)">Button 630</button>
+<input id="input-631" type="text" placeholder="Input 631" class="stress-element">
+<div id="div-632" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 632">Div 632</div>
+<a id="link-633" href="#633" class="stress-element">Link 633</a>
+<span id="span-634" class="stress-element " onclick="span(634)">Span 634</span>
+<select id="select-635" class="stress-element"><option>Option 635</option></select>
+<textarea id="textarea-636" placeholder="Textarea 636" class="stress-element"></textarea>
+<div id="aria-637" role="checkbox" aria-checked="false" class="stress-element">Checkbox 637</div>
+<i id="icon-638" class="fa-icon stress-element" aria-hidden="true">Icon 638</i>
+<canvas id="canvas-639" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-640" class="stress-element" onclick="test(640)">Button 640</button>
+<input id="input-641" type="text" placeholder="Input 641" class="stress-element">
+<div id="div-642" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 642">Div 642</div>
+<a id="link-643" href="#643" class="stress-element">Link 643</a>
+<span id="span-644" class="stress-element " onclick="span(644)">Span 644</span>
+<select id="select-645" class="stress-element"><option>Option 645</option></select>
+<textarea id="textarea-646" placeholder="Textarea 646" class="stress-element"></textarea>
+<div id="aria-647" role="checkbox" aria-checked="false" class="stress-element">Checkbox 647</div>
+<i id="icon-648" class="fa-icon stress-element" aria-hidden="true">Icon 648</i>
+<canvas id="canvas-649" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-650" class="stress-element" onclick="test(650)">Button 650</button>
+<input id="input-651" type="text" placeholder="Input 651" class="stress-element">
+<div id="div-652" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 652">Div 652</div>
+<a id="link-653" href="#653" class="stress-element">Link 653</a>
+<span id="span-654" class="stress-element " onclick="span(654)">Span 654</span>
+<select id="select-655" class="stress-element"><option>Option 655</option></select>
+<textarea id="textarea-656" placeholder="Textarea 656" class="stress-element"></textarea>
+<div id="aria-657" role="checkbox" aria-checked="false" class="stress-element">Checkbox 657</div>
+<i id="icon-658" class="fa-icon stress-element" aria-hidden="true">Icon 658</i>
+<canvas id="canvas-659" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-660" class="stress-element" onclick="test(660)">Button 660</button>
+<input id="input-661" type="text" placeholder="Input 661" class="stress-element">
+<div id="div-662" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 662">Div 662</div>
+<a id="link-663" href="#663" class="stress-element">Link 663</a>
+<span id="span-664" class="stress-element " onclick="span(664)">Span 664</span>
+<select id="select-665" class="stress-element"><option>Option 665</option></select>
+<textarea id="textarea-666" placeholder="Textarea 666" class="stress-element"></textarea>
+<div id="aria-667" role="checkbox" aria-checked="false" class="stress-element">Checkbox 667</div>
+<i id="icon-668" class="fa-icon stress-element" aria-hidden="true">Icon 668</i>
+<canvas id="canvas-669" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-670" class="stress-element" onclick="test(670)">Button 670</button>
+<input id="input-671" type="text" placeholder="Input 671" class="stress-element">
+<div id="div-672" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 672">Div 672</div>
+<a id="link-673" href="#673" class="stress-element">Link 673</a>
+<span id="span-674" class="stress-element " onclick="span(674)">Span 674</span>
+<select id="select-675" class="stress-element"><option>Option 675</option></select>
+<textarea id="textarea-676" placeholder="Textarea 676" class="stress-element"></textarea>
+<div id="aria-677" role="checkbox" aria-checked="false" class="stress-element">Checkbox 677</div>
+<i id="icon-678" class="fa-icon stress-element" aria-hidden="true">Icon 678</i>
+<canvas id="canvas-679" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-680" class="stress-element" onclick="test(680)">Button 680</button>
+<input id="input-681" type="text" placeholder="Input 681" class="stress-element">
+<div id="div-682" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 682">Div 682</div>
+<a id="link-683" href="#683" class="stress-element">Link 683</a>
+<span id="span-684" class="stress-element " onclick="span(684)">Span 684</span>
+<select id="select-685" class="stress-element"><option>Option 685</option></select>
+<textarea id="textarea-686" placeholder="Textarea 686" class="stress-element"></textarea>
+<div id="aria-687" role="checkbox" aria-checked="false" class="stress-element">Checkbox 687</div>
+<i id="icon-688" class="fa-icon stress-element" aria-hidden="true">Icon 688</i>
+<canvas id="canvas-689" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-690" class="stress-element" onclick="test(690)">Button 690</button>
+<input id="input-691" type="text" placeholder="Input 691" class="stress-element">
+<div id="div-692" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 692">Div 692</div>
+<a id="link-693" href="#693" class="stress-element">Link 693</a>
+<span id="span-694" class="stress-element " onclick="span(694)">Span 694</span>
+<select id="select-695" class="stress-element"><option>Option 695</option></select>
+<textarea id="textarea-696" placeholder="Textarea 696" class="stress-element"></textarea>
+<div id="aria-697" role="checkbox" aria-checked="false" class="stress-element">Checkbox 697</div>
+<i id="icon-698" class="fa-icon stress-element" aria-hidden="true">Icon 698</i>
+<canvas id="canvas-699" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-700" class="stress-element" onclick="test(700)">Button 700</button>
+<section id="section-700"><h2>Section 700</h2><input id="input-701" type="text" placeholder="Input 701" class="stress-element">
+<div id="div-702" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 702">Div 702</div>
+<a id="link-703" href="#703" class="stress-element">Link 703</a>
+<span id="span-704" class="stress-element " onclick="span(704)">Span 704</span>
+<select id="select-705" class="stress-element"><option>Option 705</option></select>
+<textarea id="textarea-706" placeholder="Textarea 706" class="stress-element"></textarea>
+<div id="aria-707" role="checkbox" aria-checked="false" class="stress-element">Checkbox 707</div>
+<i id="icon-708" class="fa-icon stress-element" aria-hidden="true">Icon 708</i>
+<canvas id="canvas-709" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-710" class="stress-element" onclick="test(710)">Button 710</button>
+<input id="input-711" type="text" placeholder="Input 711" class="stress-element">
+<div id="div-712" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 712">Div 712</div>
+<a id="link-713" href="#713" class="stress-element">Link 713</a>
+<span id="span-714" class="stress-element " onclick="span(714)">Span 714</span>
+<select id="select-715" class="stress-element"><option>Option 715</option></select>
+<textarea id="textarea-716" placeholder="Textarea 716" class="stress-element"></textarea>
+<div id="aria-717" role="checkbox" aria-checked="false" class="stress-element">Checkbox 717</div>
+<i id="icon-718" class="fa-icon stress-element" aria-hidden="true">Icon 718</i>
+<canvas id="canvas-719" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-720" class="stress-element" onclick="test(720)">Button 720</button>
+<input id="input-721" type="text" placeholder="Input 721" class="stress-element">
+<div id="div-722" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 722">Div 722</div>
+<a id="link-723" href="#723" class="stress-element">Link 723</a>
+<span id="span-724" class="stress-element " onclick="span(724)">Span 724</span>
+<select id="select-725" class="stress-element"><option>Option 725</option></select>
+<textarea id="textarea-726" placeholder="Textarea 726" class="stress-element"></textarea>
+<div id="aria-727" role="checkbox" aria-checked="false" class="stress-element">Checkbox 727</div>
+<i id="icon-728" class="fa-icon stress-element" aria-hidden="true">Icon 728</i>
+<canvas id="canvas-729" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-730" class="stress-element" onclick="test(730)">Button 730</button>
+<input id="input-731" type="text" placeholder="Input 731" class="stress-element">
+<div id="div-732" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 732">Div 732</div>
+<a id="link-733" href="#733" class="stress-element">Link 733</a>
+<span id="span-734" class="stress-element " onclick="span(734)">Span 734</span>
+<select id="select-735" class="stress-element"><option>Option 735</option></select>
+<textarea id="textarea-736" placeholder="Textarea 736" class="stress-element"></textarea>
+<div id="aria-737" role="checkbox" aria-checked="false" class="stress-element">Checkbox 737</div>
+<i id="icon-738" class="fa-icon stress-element" aria-hidden="true">Icon 738</i>
+<canvas id="canvas-739" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-740" class="stress-element" onclick="test(740)">Button 740</button>
+<input id="input-741" type="text" placeholder="Input 741" class="stress-element">
+<div id="div-742" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 742">Div 742</div>
+<a id="link-743" href="#743" class="stress-element">Link 743</a>
+<span id="span-744" class="stress-element " onclick="span(744)">Span 744</span>
+<select id="select-745" class="stress-element"><option>Option 745</option></select>
+<textarea id="textarea-746" placeholder="Textarea 746" class="stress-element"></textarea>
+<div id="aria-747" role="checkbox" aria-checked="false" class="stress-element">Checkbox 747</div>
+<i id="icon-748" class="fa-icon stress-element" aria-hidden="true">Icon 748</i>
+<canvas id="canvas-749" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-750" class="stress-element" onclick="test(750)">Button 750</button>
+<input id="input-751" type="text" placeholder="Input 751" class="stress-element">
+<div id="div-752" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 752">Div 752</div>
+<a id="link-753" href="#753" class="stress-element">Link 753</a>
+<span id="span-754" class="stress-element " onclick="span(754)">Span 754</span>
+<select id="select-755" class="stress-element"><option>Option 755</option></select>
+<textarea id="textarea-756" placeholder="Textarea 756" class="stress-element"></textarea>
+<div id="aria-757" role="checkbox" aria-checked="false" class="stress-element">Checkbox 757</div>
+<i id="icon-758" class="fa-icon stress-element" aria-hidden="true">Icon 758</i>
+<canvas id="canvas-759" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-760" class="stress-element" onclick="test(760)">Button 760</button>
+<input id="input-761" type="text" placeholder="Input 761" class="stress-element">
+<div id="div-762" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 762">Div 762</div>
+<a id="link-763" href="#763" class="stress-element">Link 763</a>
+<span id="span-764" class="stress-element " onclick="span(764)">Span 764</span>
+<select id="select-765" class="stress-element"><option>Option 765</option></select>
+<textarea id="textarea-766" placeholder="Textarea 766" class="stress-element"></textarea>
+<div id="aria-767" role="checkbox" aria-checked="false" class="stress-element">Checkbox 767</div>
+<i id="icon-768" class="fa-icon stress-element" aria-hidden="true">Icon 768</i>
+<canvas id="canvas-769" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-770" class="stress-element" onclick="test(770)">Button 770</button>
+<input id="input-771" type="text" placeholder="Input 771" class="stress-element">
+<div id="div-772" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 772">Div 772</div>
+<a id="link-773" href="#773" class="stress-element">Link 773</a>
+<span id="span-774" class="stress-element " onclick="span(774)">Span 774</span>
+<select id="select-775" class="stress-element"><option>Option 775</option></select>
+<textarea id="textarea-776" placeholder="Textarea 776" class="stress-element"></textarea>
+<div id="aria-777" role="checkbox" aria-checked="false" class="stress-element">Checkbox 777</div>
+<i id="icon-778" class="fa-icon stress-element" aria-hidden="true">Icon 778</i>
+<canvas id="canvas-779" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-780" class="stress-element" onclick="test(780)">Button 780</button>
+<input id="input-781" type="text" placeholder="Input 781" class="stress-element">
+<div id="div-782" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 782">Div 782</div>
+<a id="link-783" href="#783" class="stress-element">Link 783</a>
+<span id="span-784" class="stress-element " onclick="span(784)">Span 784</span>
+<select id="select-785" class="stress-element"><option>Option 785</option></select>
+<textarea id="textarea-786" placeholder="Textarea 786" class="stress-element"></textarea>
+<div id="aria-787" role="checkbox" aria-checked="false" class="stress-element">Checkbox 787</div>
+<i id="icon-788" class="fa-icon stress-element" aria-hidden="true">Icon 788</i>
+<canvas id="canvas-789" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-790" class="stress-element" onclick="test(790)">Button 790</button>
+<input id="input-791" type="text" placeholder="Input 791" class="stress-element">
+<div id="div-792" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 792">Div 792</div>
+<a id="link-793" href="#793" class="stress-element">Link 793</a>
+<span id="span-794" class="stress-element " onclick="span(794)">Span 794</span>
+<select id="select-795" class="stress-element"><option>Option 795</option></select>
+<textarea id="textarea-796" placeholder="Textarea 796" class="stress-element"></textarea>
+<div id="aria-797" role="checkbox" aria-checked="false" class="stress-element">Checkbox 797</div>
+<i id="icon-798" class="fa-icon stress-element" aria-hidden="true">Icon 798</i>
+<canvas id="canvas-799" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-800" class="stress-element" onclick="test(800)">Button 800</button>
+<section id="section-800"><h2>Section 800</h2><input id="input-801" type="text" placeholder="Input 801" class="stress-element">
+<div id="div-802" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 802">Div 802</div>
+<a id="link-803" href="#803" class="stress-element">Link 803</a>
+<span id="span-804" class="stress-element " onclick="span(804)">Span 804</span>
+<select id="select-805" class="stress-element"><option>Option 805</option></select>
+<textarea id="textarea-806" placeholder="Textarea 806" class="stress-element"></textarea>
+<div id="aria-807" role="checkbox" aria-checked="false" class="stress-element">Checkbox 807</div>
+<i id="icon-808" class="fa-icon stress-element" aria-hidden="true">Icon 808</i>
+<canvas id="canvas-809" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-810" class="stress-element" onclick="test(810)">Button 810</button>
+<input id="input-811" type="text" placeholder="Input 811" class="stress-element">
+<div id="div-812" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 812">Div 812</div>
+<a id="link-813" href="#813" class="stress-element">Link 813</a>
+<span id="span-814" class="stress-element " onclick="span(814)">Span 814</span>
+<select id="select-815" class="stress-element"><option>Option 815</option></select>
+<textarea id="textarea-816" placeholder="Textarea 816" class="stress-element"></textarea>
+<div id="aria-817" role="checkbox" aria-checked="false" class="stress-element">Checkbox 817</div>
+<i id="icon-818" class="fa-icon stress-element" aria-hidden="true">Icon 818</i>
+<canvas id="canvas-819" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-820" class="stress-element" onclick="test(820)">Button 820</button>
+<input id="input-821" type="text" placeholder="Input 821" class="stress-element">
+<div id="div-822" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 822">Div 822</div>
+<a id="link-823" href="#823" class="stress-element">Link 823</a>
+<span id="span-824" class="stress-element " onclick="span(824)">Span 824</span>
+<select id="select-825" class="stress-element"><option>Option 825</option></select>
+<textarea id="textarea-826" placeholder="Textarea 826" class="stress-element"></textarea>
+<div id="aria-827" role="checkbox" aria-checked="false" class="stress-element">Checkbox 827</div>
+<i id="icon-828" class="fa-icon stress-element" aria-hidden="true">Icon 828</i>
+<canvas id="canvas-829" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-830" class="stress-element" onclick="test(830)">Button 830</button>
+<input id="input-831" type="text" placeholder="Input 831" class="stress-element">
+<div id="div-832" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 832">Div 832</div>
+<a id="link-833" href="#833" class="stress-element">Link 833</a>
+<span id="span-834" class="stress-element " onclick="span(834)">Span 834</span>
+<select id="select-835" class="stress-element"><option>Option 835</option></select>
+<textarea id="textarea-836" placeholder="Textarea 836" class="stress-element"></textarea>
+<div id="aria-837" role="checkbox" aria-checked="false" class="stress-element">Checkbox 837</div>
+<i id="icon-838" class="fa-icon stress-element" aria-hidden="true">Icon 838</i>
+<canvas id="canvas-839" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-840" class="stress-element" onclick="test(840)">Button 840</button>
+<input id="input-841" type="text" placeholder="Input 841" class="stress-element">
+<div id="div-842" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 842">Div 842</div>
+<a id="link-843" href="#843" class="stress-element">Link 843</a>
+<span id="span-844" class="stress-element " onclick="span(844)">Span 844</span>
+<select id="select-845" class="stress-element"><option>Option 845</option></select>
+<textarea id="textarea-846" placeholder="Textarea 846" class="stress-element"></textarea>
+<div id="aria-847" role="checkbox" aria-checked="false" class="stress-element">Checkbox 847</div>
+<i id="icon-848" class="fa-icon stress-element" aria-hidden="true">Icon 848</i>
+<canvas id="canvas-849" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-850" class="stress-element" onclick="test(850)">Button 850</button>
+<input id="input-851" type="text" placeholder="Input 851" class="stress-element">
+<div id="div-852" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 852">Div 852</div>
+<a id="link-853" href="#853" class="stress-element">Link 853</a>
+<span id="span-854" class="stress-element " onclick="span(854)">Span 854</span>
+<select id="select-855" class="stress-element"><option>Option 855</option></select>
+<textarea id="textarea-856" placeholder="Textarea 856" class="stress-element"></textarea>
+<div id="aria-857" role="checkbox" aria-checked="false" class="stress-element">Checkbox 857</div>
+<i id="icon-858" class="fa-icon stress-element" aria-hidden="true">Icon 858</i>
+<canvas id="canvas-859" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-860" class="stress-element" onclick="test(860)">Button 860</button>
+<input id="input-861" type="text" placeholder="Input 861" class="stress-element">
+<div id="div-862" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 862">Div 862</div>
+<a id="link-863" href="#863" class="stress-element">Link 863</a>
+<span id="span-864" class="stress-element " onclick="span(864)">Span 864</span>
+<select id="select-865" class="stress-element"><option>Option 865</option></select>
+<textarea id="textarea-866" placeholder="Textarea 866" class="stress-element"></textarea>
+<div id="aria-867" role="checkbox" aria-checked="false" class="stress-element">Checkbox 867</div>
+<i id="icon-868" class="fa-icon stress-element" aria-hidden="true">Icon 868</i>
+<canvas id="canvas-869" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-870" class="stress-element" onclick="test(870)">Button 870</button>
+<input id="input-871" type="text" placeholder="Input 871" class="stress-element">
+<div id="div-872" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 872">Div 872</div>
+<a id="link-873" href="#873" class="stress-element">Link 873</a>
+<span id="span-874" class="stress-element " onclick="span(874)">Span 874</span>
+<select id="select-875" class="stress-element"><option>Option 875</option></select>
+<textarea id="textarea-876" placeholder="Textarea 876" class="stress-element"></textarea>
+<div id="aria-877" role="checkbox" aria-checked="false" class="stress-element">Checkbox 877</div>
+<i id="icon-878" class="fa-icon stress-element" aria-hidden="true">Icon 878</i>
+<canvas id="canvas-879" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-880" class="stress-element" onclick="test(880)">Button 880</button>
+<input id="input-881" type="text" placeholder="Input 881" class="stress-element">
+<div id="div-882" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 882">Div 882</div>
+<a id="link-883" href="#883" class="stress-element">Link 883</a>
+<span id="span-884" class="stress-element " onclick="span(884)">Span 884</span>
+<select id="select-885" class="stress-element"><option>Option 885</option></select>
+<textarea id="textarea-886" placeholder="Textarea 886" class="stress-element"></textarea>
+<div id="aria-887" role="checkbox" aria-checked="false" class="stress-element">Checkbox 887</div>
+<i id="icon-888" class="fa-icon stress-element" aria-hidden="true">Icon 888</i>
+<canvas id="canvas-889" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-890" class="stress-element" onclick="test(890)">Button 890</button>
+<input id="input-891" type="text" placeholder="Input 891" class="stress-element">
+<div id="div-892" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 892">Div 892</div>
+<a id="link-893" href="#893" class="stress-element">Link 893</a>
+<span id="span-894" class="stress-element " onclick="span(894)">Span 894</span>
+<select id="select-895" class="stress-element"><option>Option 895</option></select>
+<textarea id="textarea-896" placeholder="Textarea 896" class="stress-element"></textarea>
+<div id="aria-897" role="checkbox" aria-checked="false" class="stress-element">Checkbox 897</div>
+<i id="icon-898" class="fa-icon stress-element" aria-hidden="true">Icon 898</i>
+<canvas id="canvas-899" width="50" height="20" class="stress-element"></canvas>
+</section><button id="btn-900" class="stress-element" onclick="test(900)">Button 900</button>
+<section id="section-900"><h2>Section 900</h2><input id="input-901" type="text" placeholder="Input 901" class="stress-element">
+<div id="div-902" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 902">Div 902</div>
+<a id="link-903" href="#903" class="stress-element">Link 903</a>
+<span id="span-904" class="stress-element " onclick="span(904)">Span 904</span>
+<select id="select-905" class="stress-element"><option>Option 905</option></select>
+<textarea id="textarea-906" placeholder="Textarea 906" class="stress-element"></textarea>
+<div id="aria-907" role="checkbox" aria-checked="false" class="stress-element">Checkbox 907</div>
+<i id="icon-908" class="fa-icon stress-element" aria-hidden="true">Icon 908</i>
+<canvas id="canvas-909" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-910" class="stress-element" onclick="test(910)">Button 910</button>
+<input id="input-911" type="text" placeholder="Input 911" class="stress-element">
+<div id="div-912" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 912">Div 912</div>
+<a id="link-913" href="#913" class="stress-element">Link 913</a>
+<span id="span-914" class="stress-element " onclick="span(914)">Span 914</span>
+<select id="select-915" class="stress-element"><option>Option 915</option></select>
+<textarea id="textarea-916" placeholder="Textarea 916" class="stress-element"></textarea>
+<div id="aria-917" role="checkbox" aria-checked="false" class="stress-element">Checkbox 917</div>
+<i id="icon-918" class="fa-icon stress-element" aria-hidden="true">Icon 918</i>
+<canvas id="canvas-919" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-920" class="stress-element" onclick="test(920)">Button 920</button>
+<input id="input-921" type="text" placeholder="Input 921" class="stress-element">
+<div id="div-922" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 922">Div 922</div>
+<a id="link-923" href="#923" class="stress-element">Link 923</a>
+<span id="span-924" class="stress-element " onclick="span(924)">Span 924</span>
+<select id="select-925" class="stress-element"><option>Option 925</option></select>
+<textarea id="textarea-926" placeholder="Textarea 926" class="stress-element"></textarea>
+<div id="aria-927" role="checkbox" aria-checked="false" class="stress-element">Checkbox 927</div>
+<i id="icon-928" class="fa-icon stress-element" aria-hidden="true">Icon 928</i>
+<canvas id="canvas-929" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-930" class="stress-element" onclick="test(930)">Button 930</button>
+<input id="input-931" type="text" placeholder="Input 931" class="stress-element">
+<div id="div-932" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 932">Div 932</div>
+<a id="link-933" href="#933" class="stress-element">Link 933</a>
+<span id="span-934" class="stress-element " onclick="span(934)">Span 934</span>
+<select id="select-935" class="stress-element"><option>Option 935</option></select>
+<textarea id="textarea-936" placeholder="Textarea 936" class="stress-element"></textarea>
+<div id="aria-937" role="checkbox" aria-checked="false" class="stress-element">Checkbox 937</div>
+<i id="icon-938" class="fa-icon stress-element" aria-hidden="true">Icon 938</i>
+<canvas id="canvas-939" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-940" class="stress-element" onclick="test(940)">Button 940</button>
+<input id="input-941" type="text" placeholder="Input 941" class="stress-element">
+<div id="div-942" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 942">Div 942</div>
+<a id="link-943" href="#943" class="stress-element">Link 943</a>
+<span id="span-944" class="stress-element " onclick="span(944)">Span 944</span>
+<select id="select-945" class="stress-element"><option>Option 945</option></select>
+<textarea id="textarea-946" placeholder="Textarea 946" class="stress-element"></textarea>
+<div id="aria-947" role="checkbox" aria-checked="false" class="stress-element">Checkbox 947</div>
+<i id="icon-948" class="fa-icon stress-element" aria-hidden="true">Icon 948</i>
+<canvas id="canvas-949" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-950" class="stress-element" onclick="test(950)">Button 950</button>
+<input id="input-951" type="text" placeholder="Input 951" class="stress-element">
+<div id="div-952" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 952">Div 952</div>
+<a id="link-953" href="#953" class="stress-element">Link 953</a>
+<span id="span-954" class="stress-element " onclick="span(954)">Span 954</span>
+<select id="select-955" class="stress-element"><option>Option 955</option></select>
+<textarea id="textarea-956" placeholder="Textarea 956" class="stress-element"></textarea>
+<div id="aria-957" role="checkbox" aria-checked="false" class="stress-element">Checkbox 957</div>
+<i id="icon-958" class="fa-icon stress-element" aria-hidden="true">Icon 958</i>
+<canvas id="canvas-959" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-960" class="stress-element" onclick="test(960)">Button 960</button>
+<input id="input-961" type="text" placeholder="Input 961" class="stress-element">
+<div id="div-962" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 962">Div 962</div>
+<a id="link-963" href="#963" class="stress-element">Link 963</a>
+<span id="span-964" class="stress-element " onclick="span(964)">Span 964</span>
+<select id="select-965" class="stress-element"><option>Option 965</option></select>
+<textarea id="textarea-966" placeholder="Textarea 966" class="stress-element"></textarea>
+<div id="aria-967" role="checkbox" aria-checked="false" class="stress-element">Checkbox 967</div>
+<i id="icon-968" class="fa-icon stress-element" aria-hidden="true">Icon 968</i>
+<canvas id="canvas-969" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-970" class="stress-element" onclick="test(970)">Button 970</button>
+<input id="input-971" type="text" placeholder="Input 971" class="stress-element">
+<div id="div-972" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 972">Div 972</div>
+<a id="link-973" href="#973" class="stress-element">Link 973</a>
+<span id="span-974" class="stress-element " onclick="span(974)">Span 974</span>
+<select id="select-975" class="stress-element"><option>Option 975</option></select>
+<textarea id="textarea-976" placeholder="Textarea 976" class="stress-element"></textarea>
+<div id="aria-977" role="checkbox" aria-checked="false" class="stress-element">Checkbox 977</div>
+<i id="icon-978" class="fa-icon stress-element" aria-hidden="true">Icon 978</i>
+<canvas id="canvas-979" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-980" class="stress-element" onclick="test(980)">Button 980</button>
+<input id="input-981" type="text" placeholder="Input 981" class="stress-element">
+<div id="div-982" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 982">Div 982</div>
+<a id="link-983" href="#983" class="stress-element">Link 983</a>
+<span id="span-984" class="stress-element " onclick="span(984)">Span 984</span>
+<select id="select-985" class="stress-element"><option>Option 985</option></select>
+<textarea id="textarea-986" placeholder="Textarea 986" class="stress-element"></textarea>
+<div id="aria-987" role="checkbox" aria-checked="false" class="stress-element">Checkbox 987</div>
+<i id="icon-988" class="fa-icon stress-element" aria-hidden="true">Icon 988</i>
+<canvas id="canvas-989" width="50" height="20" class="stress-element"></canvas>
+<button id="btn-990" class="stress-element" onclick="test(990)">Button 990</button>
+<input id="input-991" type="text" placeholder="Input 991" class="stress-element">
+<div id="div-992" class="stress-element complex-element" role="button" tabindex="0" aria-label="Div 992">Div 992</div>
+<a id="link-993" href="#993" class="stress-element">Link 993</a>
+<span id="span-994" class="stress-element " onclick="span(994)">Span 994</span>
+<select id="select-995" class="stress-element"><option>Option 995</option></select>
+<textarea id="textarea-996" placeholder="Textarea 996" class="stress-element"></textarea>
+<div id="aria-997" role="checkbox" aria-checked="false" class="stress-element">Checkbox 997</div>
+<i id="icon-998" class="fa-icon stress-element" aria-hidden="true">Icon 998</i>
+<canvas id="canvas-999" width="50" height="20" class="stress-element"></canvas>
+</section>
+    <script>
+        function test(id) { console.log('Test ' + id); }
+        function span(id) { console.log('Span ' + id); }
+        
+        // Add some dynamic event listeners
+        for (let i = 0; i < 100; i++) {
+            const el = document.getElementById('btn-' + i);
+            if (el) {
+                el.addEventListener('mouseover', function() {
+                    console.log('Hover ' + i);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

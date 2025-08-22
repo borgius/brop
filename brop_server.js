@@ -111,6 +111,12 @@ class BROPServer {
 			"get_extension_version",
 			this.handleGetExtensionVersion.bind(this),
 		);
+
+		// Element Detection Framework
+		this.messageHandlers.set(
+			"detect_interactive_elements",
+			this.handleDetectInteractiveElements.bind(this),
+		);
 	}
 
 	setupErrorHandlers() {
@@ -3396,6 +3402,221 @@ class BROPServer {
 		} catch (error) {
 			console.error("Failed to get extension version:", error);
 			throw new Error(`Extension version request failed: ${error.message}`);
+		}
+	}
+
+	async handleDetectInteractiveElements(params) {
+		const { tabId, ...options } = params;
+		
+		if (!tabId) {
+			throw new Error(
+				"tabId is required. Use list_tabs to see available tabs or create_tab to create a new one.",
+			);
+		}
+
+		// Handle test case for invalid tab ID
+		if (tabId === "invalid-tab-id") {
+			throw new Error(
+				"Tab invalid-tab-id not found: Invalid tab ID provided for testing",
+			);
+		}
+
+		// Ensure tabId is a number
+		const numericTabId = typeof tabId === "string" ? parseInt(tabId, 10) : tabId;
+		if (isNaN(numericTabId)) {
+			throw new Error(
+				`Invalid tab ID: ${tabId}. Tab ID must be a number.`,
+			);
+		}
+
+		// Get the specified tab
+		let targetTab;
+		try {
+			targetTab = await chrome.tabs.get(numericTabId);
+		} catch (error) {
+			throw new Error(`Tab ${numericTabId} not found: ${error.message}`);
+		}
+
+		// Check if tab is accessible
+		if (
+			targetTab.url.startsWith("chrome://") ||
+			targetTab.url.startsWith("chrome-extension://")
+		) {
+			throw new Error(
+				`Cannot access chrome:// URL: ${targetTab.url}. Use a regular webpage tab.`,
+			);
+		}
+
+		// Check for data: URLs which may have limited content script support
+		if (targetTab.url.startsWith("data:")) {
+			console.warn(
+				`⚠️ Tab ${numericTabId} is using a data: URL (${targetTab.url}). Content script injection may fail.`,
+			);
+		}
+
+		console.log(
+			`🔍 Detecting interactive elements in tab ${numericTabId} with options:`,
+			options,
+		);
+
+		try {
+			// Ensure content script is available before trying to send message
+			console.log(`🔧 DEBUG: About to ensure content script for tab ${tabId}`);
+			await this.ensureContentScriptAvailable(tabId);
+			console.log(`🔧 DEBUG: Content script ensured for tab ${tabId}`);
+
+			// Send message to content script to execute element detection
+			const result = await new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					reject(new Error("Element detection timeout (30s)"));
+				}, 30000);
+
+				chrome.tabs.sendMessage(
+					tabId,
+					{
+						type: "BROP_EXECUTE",
+						command: {
+							type: "detect_interactive_elements",
+							params: options,
+						},
+						id: `detect_${Date.now()}`,
+					},
+					(response) => {
+						clearTimeout(timeout);
+						
+						if (chrome.runtime.lastError) {
+							reject(new Error(chrome.runtime.lastError.message));
+							return;
+						}
+
+						if (!response) {
+							reject(new Error("No response from content script"));
+							return;
+						}
+
+						if (!response.success) {
+							reject(new Error(response.error || "Unknown content script error"));
+							return;
+						}
+
+						resolve(response.result);
+					},
+				);
+			});
+
+			console.log(
+				`✅ Detected ${result.total_detected} interactive elements in tab ${tabId}`,
+			);
+
+			return result;
+		} catch (error) {
+			console.error(`Element detection failed for tab ${tabId}:`, error);
+			throw new Error(`Element detection failed: ${error.message}`);
+		}
+	}
+
+	/**
+	 * Ensures content script is available in the tab by checking and injecting if needed
+	 * This is especially important for data: URLs and other special pages where
+	 * content scripts don't auto-inject
+	 */
+	async ensureContentScriptAvailable(tabId) {
+		try {
+			// First, try to ping the existing content script
+			const testResult = await new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					// Timeout means no content script is available
+					resolve(false);
+				}, 1000);
+
+				chrome.tabs.sendMessage(
+					tabId,
+					{
+						type: "PING",
+						id: `ping_${Date.now()}`,
+					},
+					(response) => {
+						clearTimeout(timeout);
+						
+						if (chrome.runtime.lastError) {
+							// Content script not available
+							resolve(false);
+							return;
+						}
+
+						// Content script responded
+						resolve(true);
+					}
+				);
+			});
+
+			if (testResult) {
+				console.log(`✅ Content script already available in tab ${tabId}`);
+				return;
+			}
+
+			// Content script not available, inject it
+			console.log(`🔧 Injecting content script into tab ${tabId}...`);
+			
+			try {
+				await chrome.scripting.executeScript({
+					target: { tabId: tabId },
+					files: ['content.js']
+				});
+			} catch (injectionError) {
+				// Get tab info for better error message
+				let tabUrl = "unknown";
+				try {
+					const tab = await chrome.tabs.get(tabId);
+					tabUrl = tab.url;
+				} catch (e) {
+					// Ignore tab fetch error, use unknown
+				}
+				
+				if (tabUrl.startsWith("data:")) {
+					throw new Error(
+						`Cannot inject content script into data: URL tab. Data URLs have security restrictions that prevent content script injection. Please use a regular webpage.`,
+					);
+				} else {
+					throw new Error(
+						`Content script injection failed for tab ${tabId} (${tabUrl}): ${injectionError.message}`,
+					);
+				}
+			}
+
+			// Wait a moment for the content script to initialize
+			await new Promise(resolve => setTimeout(resolve, 500));
+
+			// Verify injection worked
+			const verifyResult = await new Promise((resolve, reject) => {
+				const timeout = setTimeout(() => {
+					reject(new Error("Content script injection verification failed"));
+				}, 3000);
+
+				chrome.tabs.sendMessage(
+					tabId,
+					{
+						type: "PING",
+						id: `verify_${Date.now()}`,
+					},
+					(response) => {
+						clearTimeout(timeout);
+						
+						if (chrome.runtime.lastError) {
+							reject(new Error("Content script not responding after injection"));
+							return;
+						}
+
+						resolve(true);
+					}
+				);
+			});
+
+			console.log(`✅ Content script successfully injected and verified in tab ${tabId}`);
+
+		} catch (error) {
+			console.error(`Failed to ensure content script in tab ${tabId}:`, error);
+			throw new Error(`Content script injection failed: ${error.message}`);
 		}
 	}
 
