@@ -2,6 +2,39 @@
 
 The MCP-BROP server provides AI agents with comprehensive browser automation capabilities through the Model Context Protocol (MCP). This documentation is specifically designed for AI agents to understand and use the browser automation tools effectively.
 
+## Installation & Usage
+
+### Quick Start with npx (Recommended)
+
+```bash
+npx mcp-brop@latest
+```
+
+### VS Code / Claude Desktop Configuration
+
+Add to your MCP settings:
+
+```json
+{
+  "servers": {
+    "mcp-brop": {
+      "command": "npx",
+      "args": [
+        "mcp-brop@latest"
+      ]
+    }
+  }
+}
+```
+
+### Installation as Dependency
+
+```bash
+npm install mcp-brop
+# or
+pnpm add mcp-brop
+```
+
 ## Overview
 
 MCP-BROP bridges Chrome browser automation with AI agents using the official MCP SDK. It provides both high-level browser automation tools and low-level Chrome DevTools Protocol (CDP) access.

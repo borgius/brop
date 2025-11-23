@@ -74,10 +74,35 @@ The unified bridge server provides:
 
 ### MCP Server
 
-The MCP server provides AI agents with browser automation capabilities:
+The MCP server provides AI agents with browser automation capabilities.
+
+**Running via npx (recommended):**
+
+```bash
+npx mcp-brop@latest  # Run directly without installation
+```
+
+**Running from local development:**
 
 ```bash
 pnpm run mcp  # STDIO transport on auto-detected mode
+```
+
+**Using in VS Code or Claude Desktop:**
+
+Add to your MCP configuration:
+
+```json
+{
+  "servers": {
+    "mcp-brop": {
+      "command": "npx",
+      "args": [
+        "mcp-brop@latest"
+      ]
+    }
+  }
+}
 ```
 
 **Dual-Mode Operation:**

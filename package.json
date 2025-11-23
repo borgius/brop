@@ -4,6 +4,42 @@
 	"description": "Browser Remote Operations Protocol with multiplexed CDP relay support",
 	"type": "module",
 	"main": "background.js",
+	"bin": {
+		"mcp-brop": "bridge/mcp-server.js"
+	},
+	"files": [
+		"bridge/mcp-server.js",
+		"bridge/bridge_server.js",
+		"bridge/package.json",
+		"README.md",
+		"MCP_README.md"
+	],
+	"keywords": [
+		"mcp",
+		"model-context-protocol",
+		"brop",
+		"browser-automation",
+		"chrome-extension",
+		"websocket",
+		"browser-control",
+		"remote-browser",
+		"automation",
+		"cdp",
+		"chrome-devtools-protocol"
+	],
+	"author": "BROP Team",
+	"license": "MIT",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/borgius/brop.git"
+	},
+	"homepage": "https://github.com/borgius/brop#readme",
+	"bugs": {
+		"url": "https://github.com/borgius/brop/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
 	"scripts": {
 		"dev": "nodemon",
 		"bridge": "node bridge/bridge_server.js",
@@ -42,15 +78,16 @@
 		"dotenv": "^16.5.0",
 		"https-proxy-agent": "^7.0.6",
 		"nodemon": "^3.0.2",
-		"proxy-agent": "^6.5.0",
-		"zod": "^3.25.67"
+		"proxy-agent": "^6.5.0"
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^1.3.22",
 		"@mastra/mcp": "^0.10.4",
+		"@modelcontextprotocol/sdk": "^1.13.1",
 		"@mozilla/readability": "^0.6.0",
 		"playwright": "^1.53.0",
-		"ws": "^8.14.2"
+		"ws": "^8.14.2",
+		"zod": "^3.25.67"
 	},
 	"optionalDependencies": {
 		"google-protobuf": "^3.21.2",
