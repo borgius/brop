@@ -25,13 +25,17 @@ pnpm install
 
 2. **Load the extension in Chrome:**
 
-   - **Option A:** Load unpacked extension
+   - **Option A:** Install from Chrome Web Store (Recommended)
+   
+     Install the [Browser Remote Operations Protocol extension](https://chromewebstore.google.com/detail/browser-remote-operations/olbecmikepkjffhkidaecjlbhhcdgeki) from the Chrome Web Store.
+
+   - **Option B:** Load unpacked extension (Development)
 
      - Open Chrome and go to `chrome://extensions/`
      - Enable "Developer mode"
      - Click "Load unpacked" and select this directory
 
-   - **Option B:** Install packaged extension
+   - **Option C:** Install packaged extension
      ```bash
      pnpm run pack:extension:clean  # Creates brop-extension.zip
      ```

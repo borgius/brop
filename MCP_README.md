@@ -35,6 +35,10 @@ npm install mcp-brop
 pnpm add mcp-brop
 ```
 
+### Chrome Extension Requirement
+
+The MCP server requires the BROP Chrome extension to be installed. Install it from the [Chrome Web Store](https://chromewebstore.google.com/detail/browser-remote-operations/olbecmikepkjffhkidaecjlbhhcdgeki).
+
 ## Overview
 
 MCP-BROP bridges Chrome browser automation with AI agents using the official MCP SDK. It provides both high-level browser automation tools and low-level Chrome DevTools Protocol (CDP) access.
