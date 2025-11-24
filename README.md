@@ -83,7 +83,7 @@ The MCP server provides AI agents with browser automation capabilities.
 **Running via npx (recommended):**
 
 ```bash
-npx mcp-brop@latest  # Run directly without installation
+npx @borgius/brop-mcp@latest  # Run directly without installation
 ```
 
 **Running from local development:**
@@ -99,10 +99,10 @@ Add to your MCP configuration:
 ```json
 {
   "servers": {
-    "mcp-brop": {
+    "brop-mcp": {
       "command": "npx",
       "args": [
-        "mcp-brop@latest"
+        "@borgius/brop-mcp@latest"
       ]
     }
   }
