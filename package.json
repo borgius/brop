@@ -1,11 +1,11 @@
 {
-	"name": "mcp-brop",
+	"name": "@borgius/brop-mcp",
 	"version": "2.7.1",
 	"description": "Browser Remote Operations Protocol with multiplexed CDP relay support",
 	"type": "module",
 	"main": "background.js",
 	"bin": {
-		"mcp-brop": "bridge/mcp-server.js"
+		"brop": "bridge/mcp-server.js"
 	},
 	"files": [
 		"bridge/mcp-server.js",
@@ -27,15 +27,15 @@
 		"cdp",
 		"chrome-devtools-protocol"
 	],
-	"author": "BROP Team",
+	"author": "BROP Team (99% based on original work by Jack Rudenko <i@madappgang.com>)",
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "https://github.com/MadAppGang/brop.git"
+		"url": "https://github.com/borgius/brop.git"
 	},
-	"homepage": "https://github.com/MadAppGang/brop#readme",
+	"homepage": "https://github.com/borgius/brop#readme",
 	"bugs": {
-		"url": "https://github.com/MadAppGang/brop/issues"
+		"url": "https://github.com/borgius/brop/issues"
 	},
 	"engines": {
 		"node": ">=18.0.0"
