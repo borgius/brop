@@ -56,15 +56,48 @@ export function activate(context: vscode.ExtensionContext) {
       { enableScripts: true }
     );
 
+    // track current panel to send status updates
+    currentPanel = panel;
+
     panel.webview.html = getWebviewContent(context, panel);
+
+    const statusInterval = setInterval(() => {
+      try {
+        panel.webview.postMessage({ command: 'status', status: getBropStatus() });
+      } catch (e) {}
+    }, 2000);
+
+    panel.onDidDispose(() => {
+      clearInterval(statusInterval);
+      if (currentPanel === panel) currentPanel = null;
+    });
 
     panel.webview.onDidReceiveMessage(async (message) => {
       switch (message.command) {
         case 'getTools':
           panel.webview.postMessage({ command: 'tools', tools: getTools() });
           break;
+
+        case 'getStatus':
+          panel.webview.postMessage({ command: 'status', status: getBropStatus() });
+          break;
+
+        case 'runToolWithParams':
+          // run with explicit params object from webview
+          panel.webview.postMessage({ command: 'running', toolId: message.toolId, params: message.params });
+          try {
+            const result = await runBropTool(message.toolId, message.params || {});
+            panel.webview.postMessage({ command: 'runResult', toolId: message.toolId, result });
+            const out = JSON.stringify(result, null, 2).slice(0, 2000);
+            vscode.window.showInformationMessage(`Tool ${message.toolId} result: ${out}`);
+          } catch (err: any) {
+            panel.webview.postMessage({ command: 'runError', toolId: message.toolId, error: err.message });
+            vscode.window.showErrorMessage(`Tool ${message.toolId} failed: ${err.message}`);
+          }
+          break;
+
         case 'runTool':
-          // Ask the user for params as JSON and run the selected tool
+          // Fallback: Ask the user for params as JSON and run the selected tool
           const paramsInput = await vscode.window.showInputBox({
             prompt: `Enter JSON parameters for ${message.toolId} (e.g. {"url":"https://example.com"})`,
             placeHolder: '{}',
@@ -99,40 +132,42 @@ export function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(connectCmd);
 
+  const toggleCmd = vscode.commands.registerCommand('brop.toggleServer', async () => {
+    if (bropStarted) {
+      await stopBropServer();
+      vscode.window.showInformationMessage('BROP MCP server stopped');
+    } else {
+      await startBropServer(context);
+      vscode.window.showInformationMessage('BROP MCP server starting');
+    }
+    try { sb.updateStatusBar(); } catch (e) { /* ignore */ }
+  });
+  context.subscriptions.push(toggleCmd);
+
   // Export a small API that other extensions can call.
   const api = {
     getTools,
     runTool,
-    registerTool
+    registerTool,
+    startBropServer,
+    stopBropServer,
+    getBropStatus,
   };
+
+  // Create status bar item
+  // Lazy import status bar module to avoid cycles
+  const sb = require('./status-bar');
+  sb.createStatusBar(context);
+  // Update periodically
+  const statusInterval = setInterval(() => sb.updateStatusBar(), 2000);
+  context.subscriptions.push({ dispose: () => clearInterval(statusInterval) });
 
   return api;
 }
 
 async function runBropTool(toolId: string, params: any) {
-  const mapping: Record<string, string> = {
-    brop_navigate: 'navigate',
-    brop_get_page_content: 'get_page_content',
-    brop_get_simplified_content: 'get_simplified_dom',
-    brop_execute_script: 'execute_console',
-    brop_click_element: 'click',
-    brop_type_text: 'type',
-    brop_create_page: 'create_tab',
-    brop_close_tab: 'close_tab',
-    brop_list_tabs: 'list_tabs',
-    brop_activate_tab: 'activate_tab',
-    brop_get_server_status: 'get_server_status',
-    brop_start_console_capture: 'start_console_capture',
-    brop_get_console_logs: 'get_console_logs',
-    brop_clear_console_logs: 'clear_console_logs',
-    brop_stop_console_capture: 'stop_console_capture',
-    cdp_execute_command: 'cdp_execute_command',
-    cdp_create_page: 'cdp_create_page',
-    cdp_navigate: 'cdp_navigate',
-    cdp_evaluate: 'cdp_evaluate',
-  };
-
-  const method = mapping[toolId];
+  const { getMethodForTool } = require('./tool-mapping');
+  const method = getMethodForTool(toolId);
   if (!method) throw new Error(`Unknown tool id: ${toolId}`);
 
   // Simple WebSocket client to the local BROP server (port configurable later)
@@ -184,7 +219,7 @@ async function runBropTool(toolId: string, params: any) {
   });
 }
 
-async function stopBropServer() {
+export async function stopBropServer() {
   if (bropProcess) {
     try {
       bropProcess.kill();
@@ -204,16 +239,18 @@ export async function deactivate() {
   }
 }
 
-async function startBropServer(context: vscode.ExtensionContext) {
+export async function startBropServer(context: vscode.ExtensionContext | null = null) {
   if (bropProcess) return;
 
-  const scriptPath = path.join(context.extensionPath, '..', 'bridge', 'mcp-server.js');
+  // allow tests to pass a context; otherwise derive from extension path
+  const base = context ? context.extensionPath : path.join(__dirname, '..');
+  const scriptPath = path.join(base, 'bridge', 'mcp-server.js');
   const node = process.execPath || 'node';
 
   if (bropOutputChannel) bropOutputChannel.appendLine(`Starting BROP MCP server: ${node} ${scriptPath}`);
 
   bropProcess = spawn(node, [scriptPath], {
-    cwd: path.join(context.extensionPath, '..'),
+    cwd: path.join(base),
     env: process.env,
   });
 
@@ -310,6 +347,106 @@ function getWebviewContent(context: vscode.ExtensionContext, panel: vscode.Webvi
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
 
+    function createParamsForm(toolId) {
+      const form = document.createElement('div');
+      form.style.marginTop = '6px';
+
+      function addInput(name, placeholder) {
+        const input = document.createElement('input');
+        input.placeholder = placeholder || name;
+        input.style.marginRight = '8px';
+        input.dataset.param = name;
+        return input;
+      }
+
+      // Provide basic forms for common tools; fallback to raw JSON editor
+      if (toolId === 'brop_navigate' || toolId === 'cdp_navigate' || toolId === 'brop_create_page') {
+        const url = addInput('url', 'https://example.com');
+        const err = document.createElement('span'); err.style.color = 'red'; err.style.marginLeft = '8px';
+        const run = document.createElement('button');
+        run.textContent = 'Run';
+        run.disabled = true;
+        function validateUrl() {
+          try {
+            if (!url.value) throw new Error('URL required');
+            new URL(url.value);
+            err.textContent = '';
+            run.disabled = false;
+          } catch (e) {
+            err.textContent = 'Invalid URL';
+            run.disabled = true;
+          }
+        }
+        url.oninput = validateUrl;
+        run.onclick = () => {
+          const params = {};
+          if (url.value) params.url = url.value;
+          vscode.postMessage({ command: 'runToolWithParams', toolId, params });
+        };
+        form.appendChild(url);
+        form.appendChild(err);
+        form.appendChild(run);
+        return form;
+      }
+
+      if (toolId === 'brop_click_element' || toolId === 'brop_type_text') {
+        const selector = addInput('selector', '#my-element');
+        const text = addInput('text', 'text (for type)');
+        const err = document.createElement('span'); err.style.color = 'red'; err.style.marginLeft = '8px';
+        const run = document.createElement('button');
+        run.textContent = 'Run';
+        run.disabled = true;
+        function validateSelector() {
+          if (selector.value && selector.value.trim().length > 0) {
+            err.textContent = '';
+            if (toolId === 'brop_type_text' && !text.value) {
+              run.disabled = true;
+              err.textContent = 'Text required for typing';
+            } else {
+              run.disabled = false;
+            }
+          } else {
+            err.textContent = 'Selector required';
+            run.disabled = true;
+          }
+        }
+        selector.oninput = validateSelector;
+        text.oninput = validateSelector;
+        run.onclick = () => {
+          const params: any = { selector: selector.value };
+          if (text.value) params.text = text.value;
+          vscode.postMessage({ command: 'runToolWithParams', toolId, params });
+        };
+        form.appendChild(selector);
+        form.appendChild(text);
+        form.appendChild(err);
+        form.appendChild(run);
+        return form;
+      }
+
+      // Default: JSON input
+      const ta = document.createElement('textarea');
+      ta.placeholder = '{ "tabId": 1 }';
+      ta.cols = 60;
+      ta.rows = 4;
+      ta.style.display = 'block';
+      ta.style.marginTop = '6px';
+      const run = document.createElement('button');
+      run.textContent = 'Run';
+      run.onclick = () => {
+        try {
+          const params = ta.value ? JSON.parse(ta.value) : {};
+          vscode.postMessage({ command: 'runToolWithParams', toolId, params });
+        } catch (err) {
+          const status = document.getElementById('status');
+          status.textContent = 'Invalid JSON in params';
+        }
+      };
+      form.appendChild(ta);
+      form.appendChild(run);
+      return form;
+    }
+
     function renderTools(items) {
       const container = document.getElementById('tools');
       container.innerHTML = '';
@@ -320,7 +457,19 @@ function getWebviewContent(context: vscode.ExtensionContext, panel: vscode.Webvi
         const btn = document.createElement('button');
         btn.textContent = 'Run';
         btn.style.marginLeft = '8px';
-        btn.onclick = () => vscode.postMessage({ command: 'runTool', toolId: it.id });
+        btn.onclick = () => {
+          // toggle params form per row
+          if (row.querySelector('.params')) {
+            const el = row.querySelector('.params');
+            el.remove();
+            return;
+          }
+          const paramsDiv = document.createElement('div');
+          paramsDiv.className = 'params';
+          paramsDiv.style.marginTop = '6px';
+          paramsDiv.appendChild(createParamsForm(it.id));
+          row.appendChild(paramsDiv);
+        };
         row.appendChild(btn);
         container.appendChild(row);
       });
@@ -339,11 +488,15 @@ function getWebviewContent(context: vscode.ExtensionContext, panel: vscode.Webvi
       } else if (msg.command === 'runError') {
         const status = document.getElementById('status');
         status.textContent = 'Error running ' + msg.toolId + ': ' + msg.error;
+      } else if (msg.command === 'status') {
+        const status = document.getElementById('status');
+        status.textContent = 'Server: ' + (msg.status.started ? 'running' : 'stopped') + (msg.status.pid ? ' (pid: ' + msg.status.pid + ')' : '');
       }
     });
 
-    // request tools
+    // request tools and status
     vscode.postMessage({ command: 'getTools' });
+    vscode.postMessage({ command: 'getStatus' });
   </script>
 </body>
 </html>`;
@@ -356,4 +509,13 @@ function getNonce() {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
+}
+
+let currentPanel: vscode.WebviewPanel | null = null;
+
+export function getBropStatus() {
+  return {
+    started: !!bropStarted,
+    pid: bropProcess ? bropProcess.pid : null,
+  };
 }

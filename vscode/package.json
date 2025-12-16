@@ -18,6 +18,11 @@
         "command": "brop.connect",
         "title": "BROP: Connect to MCP Tools",
         "category": "BROP"
+      },
+      {
+        "command": "brop.toggleServer",
+        "title": "BROP: Start/Stop MCP Server",
+        "category": "BROP"
       }
     ],
     "languageModelTools": [
@@ -48,6 +53,8 @@
     "watch": "tsc -w -p ./",
     "verify": "npm run compile",
     "check:out": "node ./tools/verify-out.js",
+    "test:unit": "node ./tests/unit.test.js",
+    "test:integration": "node ./tests/integration.js",
     "package": "vsce package --no-dependencies || true"
   },
   "dependencies": {

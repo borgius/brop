@@ -23,3 +23,18 @@ jobs:
         run: |
           cd vscode
           npm run check:out
+      - name: Unit tests
+        run: |
+          cd vscode
+          npm ci --silent
+          npm run test:unit
+      - name: Install root dependencies for integration tests
+        run: |
+          npm ci --silent
+
+      - name: Integration test (start MCP server + RPC)
+        run: |
+          cd vscode
+          npm ci --silent
+          npm run test:integration
+        timeout-minutes: 10

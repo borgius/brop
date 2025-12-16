@@ -44,6 +44,7 @@ if (bropExt) {
 
 - Wire up real BROP MCP tool invocations (bridge communication / commands) — DONE: the extension now sends commands to a local BROP server via WebSocket on port `9225`.
 - Start the BROP MCP server automatically on extension activation (permission to spawn `node ./bridge/mcp-server.js`) — the extension will create an "BROP MCP" output channel and attempt to start the local server on activation. Check that output channel for server logs.
+- Webview status & forms: The webview now shows the server status (running/stopped + pid) and provides small per-tool parameter forms for common tools (navigation, click, type) to avoid entering raw JSON.
 - Add tests and CI job to run compile checks
 - Improve UI and add persistent configuration
 
