@@ -1,0 +1,63 @@
+{
+  "name": "brop-mcp-vscode",
+  "displayName": "BROP MCP Tools",
+  "description": "Integrates BROP MCP tools into VS Code's Language Model Tools API.",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:brop.connect"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "brop.connect",
+        "title": "BROP: Connect to MCP Tools",
+        "category": "BROP"
+      }
+    ],
+    "languageModelTools": [
+      { "id": "brop_navigate", "title": "Navigate", "description": "Navigate to a URL in the browser" },
+      { "id": "brop_get_page_content", "title": "Get Page Content", "description": "Retrieve page HTML/text/metadata" },
+      { "id": "brop_get_simplified_content", "title": "Get Simplified Content", "description": "Get simplified DOM as HTML or Markdown" },
+      { "id": "brop_execute_script", "title": "Execute Script", "description": "Execute JS in the page context" },
+      { "id": "brop_click_element", "title": "Click Element", "description": "Click an element by selector" },
+      { "id": "brop_type_text", "title": "Type Text", "description": "Type text into an input" },
+      { "id": "brop_create_page", "title": "Create Page", "description": "Create a new tab/page" },
+      { "id": "brop_close_tab", "title": "Close Tab", "description": "Close a browser tab" },
+      { "id": "brop_list_tabs", "title": "List Tabs", "description": "List open browser tabs" },
+      { "id": "brop_activate_tab", "title": "Activate Tab", "description": "Activate/switch to a tab" },
+      { "id": "brop_get_server_status", "title": "Get Server Status", "description": "Get BROP server/connection status" },
+      { "id": "brop_start_console_capture", "title": "Start Console Capture", "description": "Start capturing console logs for a tab" },
+      { "id": "brop_get_console_logs", "title": "Get Console Logs", "description": "Retrieve captured console logs" },
+      { "id": "brop_clear_console_logs", "title": "Clear Console Logs", "description": "Clear captured console logs" },
+      { "id": "brop_stop_console_capture", "title": "Stop Console Capture", "description": "Stop console capture for a tab" },
+      { "id": "cdp_execute_command", "title": "CDP Execute Command", "description": "Execute a CDP command" },
+      { "id": "cdp_create_page", "title": "CDP Create Page", "description": "Create a page via CDP" },
+      { "id": "cdp_navigate", "title": "CDP Navigate", "description": "Navigate with CDP" },
+      { "id": "cdp_evaluate", "title": "CDP Evaluate", "description": "Evaluate JS in page via CDP" }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "verify": "npm run compile",
+    "check:out": "node ./tools/verify-out.js",
+    "package": "vsce package --no-dependencies || true"
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.1.6",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.70.0",
+    "@types/ws": "^8.5.4",
+    "vsce": "^2.0.0"
+  }
+}
